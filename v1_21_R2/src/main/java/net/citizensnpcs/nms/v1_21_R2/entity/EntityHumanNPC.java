@@ -144,12 +144,13 @@ public class EntityHumanNPC extends ServerPlayer implements NPCHolder, Skinnable
             moveOnCurrentHeading();
         }
         tickAI();
+        applyEffectsFromBlocks();
         noPhysics = isSpectator();
         if (isSpectator()) {
             onGround = false;
         }
         pushEntities();
-        NMSImpl.callNPCMoveEvent(this);
+        NMSImpl.callNPCMoveEvent(npc, this);
         if (npc.useMinecraftAI()) {
             foodData.tick(this);
         }
