@@ -264,7 +264,8 @@ public class CitizensNPC extends AbstractNPC {
         if (destination == null) {
             NMS.cancelMoveDestination(getEntity());
         } else {
-            NMS.setDestination(getEntity(), destination.getX(), destination.getY(), destination.getZ(), 1);
+            NMS.setDestination(getEntity(), destination.getX(), destination.getY(), destination.getZ(),
+                    getNavigator().getDefaultParameters().speedModifier());
         }
     }
 
@@ -398,8 +399,9 @@ public class CitizensNPC extends AbstractNPC {
                     entity.setRemoveWhenFarAway(false);
 
                     if (type == EntityType.PLAYER || Util.isHorse(type)) {
-                        if (SUPPORT_ATTRIBUTES && !hasTrait(AttributeTrait.class) || !getTrait(AttributeTrait.class)
-                                .hasAttribute(Util.getRegistryValue(Registry.ATTRIBUTE, "generic.step_height", "step_height"))) {
+                        if (SUPPORT_ATTRIBUTES && !hasTrait(AttributeTrait.class)
+                                || !getTrait(AttributeTrait.class).hasAttribute(Util
+                                        .getRegistryValue(Registry.ATTRIBUTE, "generic.step_height", "step_height"))) {
                             NMS.setStepHeight(entity, 1);
                         }
                     }
@@ -408,10 +410,8 @@ public class CitizensNPC extends AbstractNPC {
                     } else if (data().has(NPC.Metadata.AGGRESSIVE)) {
                         NMS.setAggressive(entity, data().<Boolean> get(NPC.Metadata.AGGRESSIVE));
                     }
-                    if (SUPPORT_NODAMAGE_TICKS) {
-                        entity.setNoDamageTicks(data().get(NPC.Metadata.SPAWN_NODAMAGE_TICKS,
-                                Setting.DEFAULT_SPAWN_NODAMAGE_DURATION.asTicks()));
-                    }
+                    entity.setNoDamageTicks(data().get(NPC.Metadata.SPAWN_NODAMAGE_TICKS,
+                            Setting.DEFAULT_SPAWN_NODAMAGE_DURATION.asTicks()));
                 }
                 if (requiresNameHologram() && !hasTrait(HologramTrait.class)) {
                     addTrait(HologramTrait.class);
@@ -612,16 +612,10 @@ public class CitizensNPC extends AbstractNPC {
     private static final SetMultimap<ChunkCoord, NPC> CHUNK_LOADERS = HashMultimap.create();
     private static boolean SUPPORT_ATTRIBUTES = false;
     private static boolean SUPPORT_GLOWING = false;
-    private static boolean SUPPORT_NODAMAGE_TICKS = false;
     private static boolean SUPPORT_PICKUP_ITEMS = false;
     private static boolean SUPPORT_SILENT = false;
     private static boolean SUPPORT_USE_ITEM = true;
     static {
-        try {
-            Entity.class.getMethod("setNoDamageTicks", int.class);
-            SUPPORT_NODAMAGE_TICKS = true;
-        } catch (NoSuchMethodException | SecurityException e) {
-        }
         try {
             Entity.class.getMethod("setGlowing", boolean.class);
             SUPPORT_GLOWING = true;

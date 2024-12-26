@@ -26,10 +26,10 @@ import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
-import org.bukkit.Registry;
 import org.bukkit.Rotation;
 import org.bukkit.Sound;
 import org.bukkit.World;
+import org.bukkit.attribute.Attribute;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.command.CommandSender;
@@ -170,6 +170,8 @@ import net.citizensnpcs.trait.TargetableTrait;
 import net.citizensnpcs.trait.WitherTrait;
 import net.citizensnpcs.trait.WolfModifiers;
 import net.citizensnpcs.trait.shop.StoredShops;
+import net.citizensnpcs.trait.waypoint.WanderWaypointProvider;
+import net.citizensnpcs.trait.waypoint.WaypointProvider;
 import net.citizensnpcs.trait.waypoint.Waypoints;
 import net.citizensnpcs.util.Anchor;
 import net.citizensnpcs.util.Messages;
@@ -422,13 +424,17 @@ public class NPCCommands {
     public void attribute(CommandContext args, CommandSender sender, NPC npc,
             @Arg(value = 1, completionsProvider = OptionalAttributeCompletions.class) String attribute,
             @Arg(2) Double value) {
-
+        final Attribute attr = Util.getAttribute(attribute);
+        if (attr == null) {
+            Messaging.sendErrorTr(sender, Messages.ATTRIBUTE_NOT_FOUND, attribute);
+            return;
+        }
         AttributeTrait trait = npc.getOrAddTrait(AttributeTrait.class);
         if (value == null) {
-            trait.setDefaultAttribute(Registry.ATTRIBUTE.get(SpigotUtil.getKey(attribute)));
+            trait.setDefaultAttribute(attr);
             Messaging.sendTr(sender, Messages.ATTRIBUTE_RESET, attribute);
         } else {
-            trait.setAttributeValue(Registry.ATTRIBUTE.get(SpigotUtil.getKey(attribute)), value);
+            trait.setAttributeValue(attr, value);
             Messaging.sendTr(sender, Messages.ATTRIBUTE_SET, attribute, value);
         }
     }
@@ -838,7 +844,7 @@ public class NPCCommands {
             registry = temporaryRegistry;
         }
         if (item != null) {
-            ItemStack stack = Util.parseItemStack(null, item);
+            ItemStack stack = SpigotUtil.parseItemStack(null, item);
             npc = registry.createNPCUsingItem(type, name, stack);
         } else {
             npc = registry.createNPC(type, name);
@@ -1275,7 +1281,7 @@ public class NPCCommands {
 
     @Command(
             aliases = { "npc" },
-            usage = "hologram add [text] | insert [line #] [text] | set [line #] [text] | remove [line #] | bgcolor [line #] (red,green,blue(,alpha)) | clear | lineheight [height] | viewrange [range] | margintop [line #] [margin] | marginbottom [line #] [margin]",
+            usage = "hologram add [text] | insert [line #] [text] | set [line #] [text] | remove [line #] | textshadow [line #] | bgcolor [line #] (red,green,blue(,alpha)) | clear | lineheight [height] | viewrange [range] | margintop [line #] [margin] | marginbottom [line #] [margin]",
             desc = "",
             modifiers = { "hologram" },
             min = 1,
@@ -1284,8 +1290,8 @@ public class NPCCommands {
     public void hologram(CommandContext args, CommandSender sender, NPC npc,
             @Arg(
                     value = 1,
-                    completions = { "add", "insert", "set", "bgcolor", "remove", "clear", "lineheight", "viewrange",
-                            "margintop", "marginbottom" }) String action,
+                    completions = { "add", "insert", "set", "bgcolor", "textshadow", "remove", "clear", "lineheight",
+                            "viewrange", "margintop", "marginbottom" }) String action,
             @Arg(value = 2, completionsProvider = HologramTrait.TabCompletions.class) String secondCompletion)
             throws CommandException {
         HologramTrait trait = npc.getOrAddTrait(HologramTrait.class);
@@ -1325,6 +1331,21 @@ public class NPCCommands {
                     throw new CommandException(Messages.HOLOGRAM_INVALID_LINE);
                 trait.setBackgroundColor(idx, Util.parseColor(args.getString(3)));
                 Messaging.sendTr(sender, Messages.HOLOGRAM_BACKGROUND_COLOR_SET, idx, args.getString(3));
+            }
+        } else if (action.equalsIgnoreCase("textshadow")) {
+            if (args.argsLength() == 3) {
+                trait.setDefaultTextShadow(!trait.isDefaultTextShadow());
+                Messaging.sendTr(sender, trait.isDefaultTextShadow() ? Messages.HOLOGRAM_DEFAULT_SHADOW_SET
+                        : Messages.HOLOGRAM_DEFAULT_SHADOW_UNSET, npc.getName());
+            } else {
+                int idx = args.getString(2).equals("bottom") ? 0
+                        : args.getString(2).equals("top") ? trait.getLines().size() - 1
+                                : Math.max(0, args.getInteger(2));
+                if (idx >= trait.getLines().size())
+                    throw new CommandException(Messages.HOLOGRAM_INVALID_LINE);
+                trait.setTextShadow(idx, Boolean.parseBoolean(args.getString(3)));
+                Messaging.sendTr(sender, Boolean.parseBoolean(args.getString(3)) ? Messages.HOLOGRAM_SHADOW_SET
+                        : Messages.HOLOGRAM_SHADOW_UNSET, idx);
             }
         } else if (action.equalsIgnoreCase("viewrange")) {
             if (args.argsLength() == 2)
@@ -1560,13 +1581,13 @@ public class NPCCommands {
             throws CommandException {
         EntityType type = npc.getOrAddTrait(MobType.class).getType();
         if (!type.name().equals("OMINOUS_ITEM_SPAWNER") && !type.name().contains("ITEM_FRAME")
-                && !type.name().contains("ITEM_DISPLAY") && !type.name().contains("BLOCK_DISPLAY")
-                && !type.name().equals("DROPPED_ITEM") && !type.name().equals("ITEM")
-                && type != EntityType.FALLING_BLOCK)
+                && !type.name().contains("MINECART") && !type.name().contains("ITEM_DISPLAY")
+                && !type.name().contains("BLOCK_DISPLAY") && !type.name().equals("DROPPED_ITEM")
+                && !type.name().equals("ITEM") && type != EntityType.FALLING_BLOCK)
             throw new CommandException(CommandMessages.REQUIREMENTS_INVALID_MOB_TYPE, Util.prettyEnum(type));
         ItemStack stack = args.hasFlag('h') ? ((Player) sender).getItemInHand() : new ItemStack(mat, 1);
         if (modify != null) {
-            stack = Util.parseItemStack(stack, modify);
+            stack = SpigotUtil.parseItemStack(stack, modify);
         }
         if (mat == null && !args.hasFlag('h'))
             throw new CommandException(Messages.UNKNOWN_MATERIAL);
@@ -1902,7 +1923,7 @@ public class NPCCommands {
 
     @Command(
             aliases = { "npc" },
-            usage = "minecart (--item item_name(:data)) (--offset offset)",
+            usage = "minecart (--offset offset)",
             desc = "",
             modifiers = { "minecart" },
             min = 1,
@@ -1914,24 +1935,10 @@ public class NPCCommands {
             throws CommandException {
         if (!npc.getOrAddTrait(MobType.class).getType().name().contains("MINECRAFT"))
             throw new CommandUsageException();
-        if (item != null) {
-            int data = 0;
-            if (item.contains(":")) {
-                int dataIndex = item.indexOf(':');
-                data = Integer.parseInt(item.substring(dataIndex + 1));
-                item = item.substring(0, dataIndex);
-            }
-            Material material = Material.matchMaterial(item);
-            if (material == null)
-                throw new CommandException();
-            npc.data().setPersistent(NPC.Metadata.MINECART_ITEM, material.name());
-            npc.data().setPersistent(NPC.Metadata.MINECART_ITEM_DATA, data);
-        }
         if (args.hasValueFlag("offset")) {
             npc.data().setPersistent(NPC.Metadata.MINECART_OFFSET, args.getFlagInteger("offset"));
         }
-        Messaging.sendTr(sender, Messages.MINECART_SET, npc.data().get(NPC.Metadata.MINECART_ITEM, ""),
-                npc.data().get(NPC.Metadata.MINECART_ITEM_DATA, 0), npc.data().get(NPC.Metadata.MINECART_OFFSET, 0));
+        Messaging.sendTr(sender, Messages.MINECART_SET, npc.getName(), npc.data().get(NPC.Metadata.MINECART_OFFSET, 0));
     }
 
     @Command(
@@ -2293,7 +2300,7 @@ public class NPCCommands {
             output += " " + Messaging.tr(Messages.PATHFINDING_OPTIONS_USE_NEW_FINDER, npc.getName(), useNewFinder);
         }
         if (fallingDistance != null) {
-            npc.data().set(NPC.Metadata.PATHFINDER_FALL_DISTANCE, fallingDistance);
+            npc.getNavigator().getDefaultParameters().fallDistance(fallingDistance);
             output += " "
                     + Messaging.tr(Messages.PATHFINDING_OPTIONS_FALLING_DISTANCE_SET, npc.getName(), fallingDistance);
         }
@@ -3655,19 +3662,39 @@ public class NPCCommands {
 
     @Command(
             aliases = { "npc" },
-            usage = "wander",
+            usage = "wander (add x y z world)",
             desc = "",
             modifiers = { "wander" },
             min = 1,
-            max = 1,
+            max = 6,
             permission = "citizens.npc.wander")
-    public void wander(CommandContext args, CommandSender sender, NPC npc) throws CommandException {
+    public void wander(CommandContext args, CommandSender sender, NPC npc, @Arg(1) String command)
+            throws CommandException {
         Waypoints trait = npc.getOrAddTrait(Waypoints.class);
-        if (sender instanceof Player && Editor.hasEditor((Player) sender)) {
-            Editor.leave((Player) sender);
+        if (args.argsLength() == 1) {
+            if (sender instanceof Player && Editor.hasEditor((Player) sender)) {
+                Editor.leave((Player) sender);
+            }
+            trait.setWaypointProvider(trait.getCurrentProviderName().equals("wander") ? "linear" : "wander");
+            Messaging.sendTr(sender, Messages.WAYPOINT_PROVIDER_SET, trait.getCurrentProviderName());
+        } else if (command.equals("add")) {
+            if (args.argsLength() < 5)
+                throw new CommandUsageException();
+
+            WaypointProvider provider = trait.getCurrentProvider();
+            if (!(provider instanceof WanderWaypointProvider)) {
+                trait.setWaypointProvider("wander");
+                provider = trait.getCurrentProvider();
+            }
+            World world = args.argsLength() > 5 ? Bukkit.getWorld(args.getString(5))
+                    : npc.getStoredLocation().getWorld();
+            if (world == null)
+                throw new CommandException(Messages.WORLD_NOT_FOUND);
+
+            Location loc = new Location(world, args.getInteger(2), args.getInteger(3), args.getInteger(4));
+            ((WanderWaypointProvider) provider).addRegionCentre(loc);
+            Messaging.sendTr(sender, Messages.WAYPOINT_ADDED, Util.prettyPrintLocation(loc));
         }
-        trait.setWaypointProvider(trait.getCurrentProviderName().equals("wander") ? "linear" : "wander");
-        Messaging.sendTr(sender, Messages.WAYPOINT_PROVIDER_SET, trait.getCurrentProviderName());
     }
 
     @Command(
@@ -3755,10 +3782,10 @@ public class NPCCommands {
                 trait.isTamed(), trait.getCollarColor().name());
     }
 
-    public static class OptionalAttributeCompletions extends OptionalEnumCompletions {
+    public static class OptionalAttributeCompletions implements Arg.CompletionsProvider {
         @Override
-        public String getEnumClassName() {
-            return "org.bukkit.attribute.Attribute";
+        public Collection<String> getCompletions(CommandContext args, CommandSender sender, NPC npc) {
+            return Arrays.stream(Attribute.values()).map(attr -> attr.getKey().toString()).collect(Collectors.toList());
         }
     }
 

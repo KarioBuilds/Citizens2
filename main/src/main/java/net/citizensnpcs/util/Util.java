@@ -24,6 +24,7 @@ import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Registry;
 import org.bukkit.World;
+import org.bukkit.attribute.Attribute;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.entity.Entity;
@@ -40,10 +41,8 @@ import org.bukkit.util.Vector;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
-import com.google.common.collect.Iterables;
 import com.google.common.io.ByteArrayDataOutput;
 import com.google.common.io.ByteStreams;
-import com.google.common.primitives.Ints;
 
 import net.citizensnpcs.Settings.Setting;
 import net.citizensnpcs.api.CitizensAPI;
@@ -188,6 +187,17 @@ public class Util {
         NMS.look(entity, to, headOnly, immediate);
     }
 
+    public static Attribute getAttribute(String attribute) {
+        if (!SpigotUtil.isRegistryKeyed(Attribute.class)) {
+            try {
+                return Attribute.valueOf(attribute.toUpperCase(Locale.ROOT));
+            } catch (IllegalArgumentException ignore) {
+                return null;
+            }
+        }
+        return getRegistryValue(Registry.ATTRIBUTE, attribute);
+    }
+
     public static Location getCenterLocation(Block block) {
         Location bloc = block.getLocation();
         Location center = new Location(bloc.getWorld(), bloc.getBlockX() + 0.5, bloc.getBlockY(),
@@ -259,9 +269,9 @@ public class Util {
         for (String keyCandidate : keyCandidates) {
             final NamespacedKey key = SpigotUtil.getKey(keyCandidate);
             final T value = registry.get(key);
-            if (value != null) {
+            if (value != null)
                 return value;
-            }
+
         }
         return null;
     }
@@ -411,32 +421,6 @@ public class Util {
             return Color.fromARGB(list.get(3), list.get(0), list.get(1), list.get(2));
         }
         throw new NumberFormatException();
-    }
-
-    public static ItemStack parseItemStack(ItemStack stack, String item) {
-        if (stack == null || stack.getType() == Material.AIR) {
-            stack = new ItemStack(Material.STONE, 1);
-        }
-        if (item.contains("{")) {
-            try {
-                Bukkit.getUnsafe().modifyItemStack(stack, item);
-            } catch (Throwable t) {
-                t.printStackTrace();
-            }
-        } else if (!item.isEmpty()) {
-            String[] parts = Iterables.toArray(Splitter.on(',').split(item), String.class);
-            if (parts.length == 0)
-                return stack;
-            stack.setType(Material.matchMaterial(parts[0]));
-            if (parts.length > 1) {
-                stack.setAmount(Ints.tryParse(parts[1]));
-            }
-            if (parts.length > 2) {
-                Integer durability = Ints.tryParse(parts[2]);
-                stack.setDurability(durability.shortValue());
-            }
-        }
-        return stack;
     }
 
     public static int parseTicks(String raw) {

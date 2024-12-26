@@ -7,6 +7,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -370,7 +371,7 @@ public class ShopTrait extends Trait {
         @Persist
         private int timesPurchasable = 0;
 
-        public List<Transaction> apply(List<NPCShopAction> actions, Function<NPCShopAction, Transaction> func) {
+        private List<Transaction> apply(List<NPCShopAction> actions, Function<NPCShopAction, Transaction> func) {
             List<Transaction> pending = Lists.newArrayList();
             for (NPCShopAction action : actions) {
                 Transaction take = func.apply(action);
@@ -402,11 +403,11 @@ public class ShopTrait extends Trait {
             }
         }
 
-        public void changeCost(Function<NPCShopAction, Boolean> filter, NPCShopAction cost) {
+        private void changeCost(Function<NPCShopAction, Boolean> filter, NPCShopAction cost) {
             changeAction(this.cost, filter, cost);
         }
 
-        public void changeResult(Function<NPCShopAction, Boolean> filter, NPCShopAction result) {
+        private void changeResult(Function<NPCShopAction, Boolean> filter, NPCShopAction result) {
             changeAction(this.result, filter, result);
         }
 
@@ -426,6 +427,10 @@ public class ShopTrait extends Trait {
             } catch (CloneNotSupportedException e) {
                 throw new Error(e);
             }
+        }
+
+        public List<NPCShopAction> getCost() {
+            return cost;
         }
 
         public ItemStack getDisplayItem(Player player) {
@@ -457,6 +462,10 @@ public class ShopTrait extends Trait {
             return stack;
         }
 
+        public List<NPCShopAction> getResult() {
+            return result;
+        }
+
         @Override
         public void load(DataKey key) {
             if (key.keyExists("message")) {
@@ -469,7 +478,7 @@ public class ShopTrait extends Trait {
             }
         }
 
-        public void onClick(NPCShop shop, Player player, InventoryMultiplexer inventory, boolean shiftClick,
+        private void onClick(NPCShop shop, Player player, InventoryMultiplexer inventory, boolean shiftClick,
                 boolean secondClick) {
             // TODO: InventoryMultiplexer could be lifted up to transact in apply(), which would be cleaner.
             // if this is done, it should probably refresh after every transaction application
@@ -588,7 +597,7 @@ public class ShopTrait extends Trait {
             ctx.getSlot(9 * 4 + 2).setItemStack(new ItemStack(Util.getFallbackMaterial("OAK_SIGN", "SIGN")),
                     "Set already purchased message, currently:\n",
                     modified.alreadyPurchasedMessage == null ? "Unset" : modified.alreadyPurchasedMessage);
-            ctx.getSlot(9 * 4 + 2).setClickHandler(e -> InputMenus.runChatStringSetter(ctx.getMenu(), e.getWhoClicked(),
+            ctx.getSlot(9 * 4 + 2).setClickHandler(e -> InputMenus.runChatStringSetter(ctx.getMenu(), e,
                     "Enter the new already purchased message, currently:<br>[[" + modified.alreadyPurchasedMessage,
                     s -> {
                         modified.alreadyPurchasedMessage = s;
@@ -599,7 +608,7 @@ public class ShopTrait extends Trait {
                     new ItemStack(Util.getFallbackMaterial("GREEN_WOOL", "EMERALD", "OAK_SIGN", "SIGN")),
                     "Set successful click message, currently:\n",
                     modified.resultMessage == null ? "Unset" : modified.resultMessage);
-            ctx.getSlot(9 * 3 + 3).setClickHandler(e -> InputMenus.runChatStringSetter(ctx.getMenu(), e.getWhoClicked(),
+            ctx.getSlot(9 * 3 + 3).setClickHandler(e -> InputMenus.runChatStringSetter(ctx.getMenu(), e,
                     "Enter the new successful click message, currently:<br>[[" + modified.resultMessage, s -> {
                         modified.resultMessage = s;
                         ctx.getSlot(9 * 3 + 3).setDescription(modified.resultMessage);
@@ -608,7 +617,7 @@ public class ShopTrait extends Trait {
             ctx.getSlot(9 * 3 + 6).setItemStack(new ItemStack(Util.getFallbackMaterial("RED_WOOL", "OAK_SIGN", "SIGN")),
                     "Set unsuccessful click message, currently:\n",
                     modified.costMessage == null ? "Unset" : modified.costMessage);
-            ctx.getSlot(9 * 3 + 6).setClickHandler(e -> InputMenus.runChatStringSetter(ctx.getMenu(), e.getWhoClicked(),
+            ctx.getSlot(9 * 3 + 6).setClickHandler(e -> InputMenus.runChatStringSetter(ctx.getMenu(), e,
                     "Enter the new unsuccessful click message, currently:<br>[[" + modified.costMessage, s -> {
                         modified.costMessage = s;
                         ctx.getSlot(9 * 3 + 6).setDescription(modified.costMessage);
@@ -618,7 +627,7 @@ public class ShopTrait extends Trait {
                     "Set click to confirm message.",
                     "For example, 'click again to buy this item'\nYou can use <cost> or <result> placeholders.\nCurrently:\n"
                             + (modified.clickToConfirmMessage == null ? "Unset" : modified.clickToConfirmMessage));
-            ctx.getSlot(9 * 3 + 5).setClickHandler(e -> InputMenus.runChatStringSetter(ctx.getMenu(), e.getWhoClicked(),
+            ctx.getSlot(9 * 3 + 5).setClickHandler(e -> InputMenus.runChatStringSetter(ctx.getMenu(), e,
                     "Enter the new click to confirm message, currently:<br>[[" + modified.clickToConfirmMessage, s -> {
                         modified.clickToConfirmMessage = s;
                         ctx.getSlot(9 * 3 + 5).setDescription(modified.clickToConfirmMessage);
@@ -669,14 +678,18 @@ public class ShopTrait extends Trait {
             if (modified.display == null)
                 return;
 
-            InputMenus.runChatStringSetter(ctx.getMenu(), event.getWhoClicked(),
+            InputMenus.runChatStringSetter(ctx.getMenu(), event,
                     "Enter the new item description, currently:<br>[[" + (modified.display.getItemMeta().hasLore()
                             ? Joiner.on("<br>").skipNulls().join(modified.display.getItemMeta().getLore())
                             : "Unset"),
                     description -> {
                         ItemMeta meta = modified.display.getItemMeta();
-                        meta.setLore(
-                                Lists.newArrayList(Splitter.on('\n').split(Messaging.parseComponents(description))));
+                        if (description.isEmpty()) {
+                            meta.setLore(Lists.newArrayList());
+                        } else {
+                            meta.setLore(Splitter.on("<br>").splitToStream(description)
+                                    .map(s -> Messaging.parseComponents(s)).collect(Collectors.toList()));
+                        }
                         modified.display.setItemMeta(meta);
                     });
         }

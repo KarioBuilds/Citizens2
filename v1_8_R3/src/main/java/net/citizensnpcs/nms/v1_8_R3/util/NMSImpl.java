@@ -19,7 +19,6 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import net.citizensnpcs.api.event.NPCMoveEvent;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -75,6 +74,7 @@ import net.citizensnpcs.api.ai.NavigatorParameters;
 import net.citizensnpcs.api.ai.event.CancelReason;
 import net.citizensnpcs.api.command.CommandManager;
 import net.citizensnpcs.api.command.exception.CommandException;
+import net.citizensnpcs.api.event.NPCMoveEvent;
 import net.citizensnpcs.api.gui.ForwardingInventory;
 import net.citizensnpcs.api.npc.BlockBreaker;
 import net.citizensnpcs.api.npc.BlockBreaker.BlockBreakerConfiguration;
@@ -299,6 +299,13 @@ public class NMSImpl implements NMSBridge {
         } else if (handle instanceof EntityHumanNPC) {
             ((EntityHumanNPC) handle).getControllerMove().f = false;
         }
+    }
+
+    @Override
+    public boolean canNavigateTo(final org.bukkit.entity.Entity entity, final Location dest,
+            final NavigatorParameters params) {
+        final NavigationAbstract navigation = getNavigation(entity);
+        return navigation.a(dest.getX(), dest.getY(), dest.getZ()) != null;
     }
 
     @Override
@@ -551,14 +558,14 @@ public class NMSImpl implements NMSBridge {
                 Iterables.transform(dest,
                         input -> new PathPoint(input.getBlockX(), input.getBlockY(), input.getBlockZ())),
                 PathPoint.class));
-        return getTargetNavigator(entity, params, input -> input.a(path, params.speed()));
+        return getTargetNavigator(entity, params, input -> input.a(path, params.speedModifier()));
     }
 
     @Override
     public MCNavigator getTargetNavigator(final org.bukkit.entity.Entity entity, final Location dest,
             final NavigatorParameters params) {
         return getTargetNavigator(entity, params,
-                input -> input.a(dest.getX(), dest.getY(), dest.getZ(), params.speed()));
+                input -> input.a(dest.getX(), dest.getY(), dest.getZ(), params.speedModifier()));
     }
 
     private MCNavigator getTargetNavigator(final org.bukkit.entity.Entity entity, final NavigatorParameters params,
@@ -597,7 +604,7 @@ public class NMSImpl implements NMSBridge {
 
             @Override
             public boolean update() {
-                if (params.speed() != lastSpeed) {
+                if (params.speedModifier() != lastSpeed) {
                     Entity handle = getHandle(entity);
                     float oldWidth = handle.width;
                     if (handle instanceof EntityHorse) {
@@ -608,9 +615,9 @@ public class NMSImpl implements NMSBridge {
                     }
                     handle.width = oldWidth; // minecraft requires that an entity fit onto both blocks if width >= 1f,
                                              // but we'd prefer to make it just fit on 1 so hack around it a bit.
-                    lastSpeed = params.speed();
+                    lastSpeed = params.speedModifier();
                 }
-                navigation.a(params.speed());
+                navigation.a(params.speedModifier());
                 return NMSImpl.isNavigationFinished(navigation);
             }
         };
@@ -1473,7 +1480,7 @@ public class NMSImpl implements NMSBridge {
             Location location = parameters.entityTargetLocationMapper().apply(target);
             if (location == null)
                 throw new IllegalStateException("mapper should not return null");
-            navigation.a(location.getX(), location.getY(), location.getZ(), parameters.speed());
+            navigation.a(location.getX(), location.getY(), location.getZ(), parameters.speedModifier());
         }
 
         @Override
@@ -1524,16 +1531,21 @@ public class NMSImpl implements NMSBridge {
     public static <T extends Entity & NPCHolder> void callNPCMoveEvent(T what) {
         final NPC npc = what.getNPC();
         if (npc != null && NPCMoveEvent.getHandlerList().getRegisteredListeners().length > 0) {
-            if (what.lastX != what.locX || what.lastY != what.locY || what.lastZ != what.locZ || what.lastYaw != what.yaw || what.lastPitch != what.pitch) {
-                Location from = new Location(what.world.getWorld(), what.lastX, what.lastY, what.lastZ, what.lastYaw, what.lastPitch);
-                Location to = new Location (what.world.getWorld(), what.locX, what.locY, what.locZ, what.yaw, what.pitch);
+            if (what.lastX != what.locX || what.lastY != what.locY || what.lastZ != what.locZ
+                    || what.lastYaw != what.yaw || what.lastPitch != what.pitch) {
+                Location from = new Location(what.world.getWorld(), what.lastX, what.lastY, what.lastZ, what.lastYaw,
+                        what.lastPitch);
+                Location to = new Location(what.world.getWorld(), what.locX, what.locY, what.locZ, what.yaw,
+                        what.pitch);
                 final NPCMoveEvent event = new NPCMoveEvent(npc, from, to.clone());
                 Bukkit.getPluginManager().callEvent(event);
                 if (event.isCancelled()) {
                     final Location eventFrom = event.getFrom();
-                    what.setLocation(eventFrom.getX(), eventFrom.getY(), eventFrom.getZ(), eventFrom.getYaw(), eventFrom.getPitch());
+                    what.setLocation(eventFrom.getX(), eventFrom.getY(), eventFrom.getZ(), eventFrom.getYaw(),
+                            eventFrom.getPitch());
                 } else if (!to.equals(event.getTo())) {
-                    what.setLocation(event.getTo().getX(), event.getTo().getY(), event.getTo().getZ(), event.getTo().getYaw(), event.getTo().getPitch());
+                    what.setLocation(event.getTo().getX(), event.getTo().getY(), event.getTo().getZ(),
+                            event.getTo().getYaw(), event.getTo().getPitch());
                 }
             }
         }
@@ -1718,12 +1730,11 @@ public class NMSImpl implements NMSBridge {
         NPC npc = ((NPCHolder) minecart).getNPC();
         if (npc == null)
             return;
-        Material mat = Material.getMaterial(npc.data().get(NPC.Metadata.MINECART_ITEM, ""));
-        int data = npc.data().get(NPC.Metadata.MINECART_ITEM_DATA, 0);
         int offset = npc.data().get(NPC.Metadata.MINECART_OFFSET, 0);
-        minecart.a(mat != null);
-        if (mat != null) {
-            minecart.setDisplayBlock(Block.getById(mat.getId()).fromLegacyData(data));
+        minecart.a(npc.getItemProvider().get() != null);
+        if (npc.getItemProvider().get() != null) {
+            Material mat = npc.getItemProvider().get().getType();
+            minecart.setDisplayBlock(Block.getById(mat.getId()).fromLegacyData(0));
         }
         minecart.SetDisplayBlockOffset(offset);
     }

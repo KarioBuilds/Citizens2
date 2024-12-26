@@ -16,7 +16,6 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import net.citizensnpcs.api.event.NPCMoveEvent;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -73,6 +72,7 @@ import net.citizensnpcs.api.ai.event.CancelReason;
 import net.citizensnpcs.api.astar.pathfinder.DoorExaminer;
 import net.citizensnpcs.api.command.CommandManager;
 import net.citizensnpcs.api.command.exception.CommandException;
+import net.citizensnpcs.api.event.NPCMoveEvent;
 import net.citizensnpcs.api.gui.ForwardingInventory;
 import net.citizensnpcs.api.npc.BlockBreaker;
 import net.citizensnpcs.api.npc.BlockBreaker.BlockBreakerConfiguration;
@@ -453,6 +453,13 @@ public class NMSImpl implements NMSBridge {
     }
 
     @Override
+    public boolean canNavigateTo(final org.bukkit.entity.Entity entity, final Location dest,
+            final NavigatorParameters params) {
+        final PathNavigation navigation = getNavigation(entity);
+        return navigation.createPath(new BlockPos(dest.getX(), dest.getY(), dest.getZ()), 1) != null;
+    }
+
+    @Override
     public EntityPacketTracker createPacketTracker(org.bukkit.entity.Entity entity, PacketAggregator agg) {
         Entity handle = getHandle(entity);
         Set<ServerPlayerConnection> linked = Sets.newIdentityHashSet();
@@ -724,14 +731,14 @@ public class NMSImpl implements NMSBridge {
                 input -> new Node(input.getBlockX(), input.getBlockY(), input.getBlockZ())));
         Node last = list.size() > 0 ? list.get(list.size() - 1) : null;
         final Path path = new Path(list, last != null ? new BlockPos(last.x, last.y, last.z) : null, true);
-        return getTargetNavigator(entity, params, input -> input.moveTo(path, params.speed()));
+        return getTargetNavigator(entity, params, input -> input.moveTo(path, params.speedModifier()));
     }
 
     @Override
     public MCNavigator getTargetNavigator(final org.bukkit.entity.Entity entity, final Location dest,
             final NavigatorParameters params) {
         return getTargetNavigator(entity, params,
-                input -> input.moveTo(dest.getX(), dest.getY(), dest.getZ(), params.speed()));
+                input -> input.moveTo(dest.getX(), dest.getY(), dest.getZ(), params.speedModifier()));
     }
 
     private MCNavigator getTargetNavigator(final org.bukkit.entity.Entity entity, final NavigatorParameters params,
@@ -794,7 +801,7 @@ public class NMSImpl implements NMSBridge {
 
             @Override
             public boolean update() {
-                if (params.speed() != lastSpeed) {
+                if (params.speedModifier() != lastSpeed) {
                     Entity handle = getHandle(entity);
                     EntityDimensions size = null;
                     try {
@@ -816,13 +823,13 @@ public class NMSImpl implements NMSBridge {
                         // minecraft requires that an entity fit onto both blocks if width >= 1f, but we'd prefer to
                         // make it just fit on 1 so hack around it a bit.
                     }
-                    lastSpeed = params.speed();
+                    lastSpeed = params.speedModifier();
                 }
                 Path path = getPathEntity(navigation);
                 if (params.debug() && !path.isDone()) {
                     Util.sendBlockChanges(getBlocks(entity, path), Material.DANDELION);
                 }
-                navigation.setSpeedModifier(params.speed());
+                navigation.setSpeedModifier(params.speedModifier());
                 return navigation.isDone();
             }
         };
@@ -1818,7 +1825,7 @@ public class NMSImpl implements NMSBridge {
             Location location = parameters.entityTargetLocationMapper().apply(target);
             if (location == null)
                 throw new IllegalStateException("mapper should not return null");
-            navigation.moveTo(location.getX(), location.getY(), location.getZ(), parameters.speed());
+            navigation.moveTo(location.getX(), location.getY(), location.getZ(), parameters.speedModifier());
         }
 
         @Override
@@ -1864,6 +1871,28 @@ public class NMSImpl implements NMSBridge {
                     throw new UnsupportedOperationException();
                 }
             };
+        }
+    }
+
+    public static <T extends Entity & NPCHolder> void callNPCMoveEvent(T what) {
+        final NPC npc = what.getNPC();
+        if (npc != null && NPCMoveEvent.getHandlerList().getRegisteredListeners().length > 0) {
+            if (what.xo != what.getX() || what.yo != what.getY() || what.zo != what.getZ()
+                    || what.yRotO != what.getYRot() || what.xRotO != what.getXRot()) {
+                Location from = new Location(what.level.getWorld(), what.xo, what.yo, what.zo, what.yRotO, what.xRotO);
+                Location to = new Location(what.level.getWorld(), what.getX(), what.getY(), what.getZ(), what.getYRot(),
+                        what.getXRot());
+                final NPCMoveEvent event = new NPCMoveEvent(npc, from, to.clone());
+                Bukkit.getPluginManager().callEvent(event);
+                if (event.isCancelled()) {
+                    final Location eventFrom = event.getFrom();
+                    what.absMoveTo(eventFrom.getX(), eventFrom.getY(), eventFrom.getZ(), eventFrom.getYaw(),
+                            eventFrom.getPitch());
+                } else if (!to.equals(event.getTo())) {
+                    what.absMoveTo(event.getTo().getX(), event.getTo().getY(), event.getTo().getZ(),
+                            event.getTo().getYaw(), event.getTo().getPitch());
+                }
+            }
         }
     }
 
@@ -2037,24 +2066,6 @@ public class NMSImpl implements NMSBridge {
         entity.calculateEntityAnimation(entity, entity instanceof net.minecraft.world.entity.animal.FlyingAnimal);
     }
 
-    public static <T extends Entity & NPCHolder> void callNPCMoveEvent(T what) {
-        final NPC npc = what.getNPC();
-        if (npc != null && NPCMoveEvent.getHandlerList().getRegisteredListeners().length > 0) {
-            if (what.xo != what.getX() || what.yo != what.getY() || what.zo != what.getZ() || what.yRotO != what.getYRot() || what.xRotO != what.getXRot()) {
-                Location from = new Location(what.level.getWorld(), what.xo, what.yo, what.zo, what.yRotO, what.xRotO);
-                Location to = new Location(what.level.getWorld(), what.getX(), what.getY(), what.getZ(), what.getYRot(), what.getXRot());
-                final NPCMoveEvent event = new NPCMoveEvent(npc, from, to.clone());
-                Bukkit.getPluginManager().callEvent(event);
-                if (event.isCancelled()) {
-                    final Location eventFrom = event.getFrom();
-                    what.absMoveTo(eventFrom.getX(), eventFrom.getY(), eventFrom.getZ(), eventFrom.getYaw(), eventFrom.getPitch());
-                } else if (!to.equals(event.getTo())) {
-                    what.absMoveTo(event.getTo().getX(), event.getTo().getY(), event.getTo().getZ(), event.getTo().getYaw(), event.getTo().getPitch());
-                }
-            }
-        }
-    }
-
     public static TreeMap<?, ?> getBehaviorMap(LivingEntity entity) {
         try {
             return (TreeMap<?, ?>) BEHAVIOR_MAP.invoke(entity.getBrain());
@@ -2135,11 +2146,10 @@ public class NMSImpl implements NMSBridge {
         NPC npc = ((NPCHolder) minecart).getNPC();
         if (npc == null)
             return;
-        Material mat = Material.getMaterial(npc.data().get(NPC.Metadata.MINECART_ITEM, ""));
-        int data = npc.data().get(NPC.Metadata.MINECART_ITEM_DATA, 0); // TODO: migration for this
         int offset = npc.data().get(NPC.Metadata.MINECART_OFFSET, 0);
-        minecart.setCustomDisplay(mat != null);
-        if (mat != null) {
+        minecart.setCustomDisplay(npc.getItemProvider().get() != null);
+        if (npc.getItemProvider().get() != null) {
+            Material mat = npc.getItemProvider().get().getType();
             minecart.setDisplayBlockState(Registry.BLOCK.byId(mat.getId()).defaultBlockState());
         }
         minecart.setDisplayOffset(offset);
