@@ -50,6 +50,7 @@ import net.minecraft.server.v1_13_R2.EntityHuman;
 import net.minecraft.server.v1_13_R2.EntityPlayer;
 import net.minecraft.server.v1_13_R2.EnumGamemode;
 import net.minecraft.server.v1_13_R2.EnumItemSlot;
+import net.minecraft.server.v1_13_R2.EnumPistonReaction;
 import net.minecraft.server.v1_13_R2.EnumProtocolDirection;
 import net.minecraft.server.v1_13_R2.GenericAttributes;
 import net.minecraft.server.v1_13_R2.IBlockData;
@@ -122,10 +123,20 @@ public class EntityHumanNPC extends EntityPlayer implements NPCHolder, Skinnable
     }
 
     @Override
+    public int bn() {
+        return NMS.getFallDistance(npc, super.bn());
+    }
+
+    @Override
     public void c(float f, float f1) {
         if (npc == null || !npc.isFlyable()) {
             super.c(f, f1);
         }
+    }
+
+    @Override
+    public float cG() {
+        return NMS.getJumpPower(npc, super.cG());
     }
 
     @Override
@@ -232,6 +243,11 @@ public class EntityHumanNPC extends EntityPlayer implements NPCHolder, Skinnable
     }
 
     @Override
+    public EnumPistonReaction getPushReaction() {
+        return Util.callPistonPushEvent(npc) ? EnumPistonReaction.IGNORE : super.getPushReaction();
+    }
+
+    @Override
     public String getSkinName() {
         String skinName = npc.getOrAddTrait(SkinTrait.class).getSkinName();
         if (skinName == null) {
@@ -314,6 +330,7 @@ public class EntityHumanNPC extends EntityPlayer implements NPCHolder, Skinnable
             super.playerTick();
             return;
         }
+        NMSImpl.callNPCMoveEvent(this);
         W();
         boolean navigating = npc.getNavigator().isNavigating() || controllerMove.b();
         if (!navigating && getBukkitEntity() != null
@@ -333,7 +350,6 @@ public class EntityHumanNPC extends EntityPlayer implements NPCHolder, Skinnable
         }
         updateAI();
         cN();
-        NMSImpl.callNPCMoveEvent(this);
         if (npc.useMinecraftAI()) {
             foodData.a(this);
         }

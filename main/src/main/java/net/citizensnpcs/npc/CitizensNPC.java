@@ -15,6 +15,7 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
+import org.bukkit.event.HandlerList;
 import org.bukkit.event.player.PlayerTeleportEvent.TeleportCause;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -76,11 +77,13 @@ public class CitizensNPC extends AbstractNPC {
 
     @Override
     public boolean despawn(DespawnReason reason) {
+        if (reason == DespawnReason.RELOAD) {
+            for (Trait trait : traits.values()) {
+                HandlerList.unregisterAll(trait);
+            }
+        }
         if (getEntity() == null && reason != DespawnReason.DEATH) {
             Messaging.debug("Tried to despawn", this, "while already despawned, DespawnReason." + reason);
-            if (reason == DespawnReason.RELOAD) {
-                unloadEvents();
-            }
             return true;
         }
         NPCDespawnEvent event = new NPCDespawnEvent(this, reason);
@@ -101,9 +104,6 @@ public class CitizensNPC extends AbstractNPC {
             PlayerUpdateTask.deregisterPlayer(getEntity());
         }
         navigator.onDespawn();
-        if (reason == DespawnReason.RELOAD) {
-            unloadEvents();
-        }
         for (Trait trait : new ArrayList<>(traits.values())) {
             trait.onDespawn(reason);
         }
@@ -112,6 +112,8 @@ public class CitizensNPC extends AbstractNPC {
         if (getEntity() instanceof SkinnableEntity) {
             ((SkinnableEntity) getEntity()).getSkinTracker().onRemoveNPC();
         }
+        getEntity().removeMetadata("NPC", CitizensAPI.getPlugin());
+        getEntity().removeMetadata("NPC-ID", CitizensAPI.getPlugin());
         if (reason == DespawnReason.DEATH) {
             entityController.die();
         } else {

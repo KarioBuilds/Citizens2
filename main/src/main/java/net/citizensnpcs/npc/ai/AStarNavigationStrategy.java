@@ -123,7 +123,8 @@ public class AStarNavigationStrategy extends AbstractPathStrategy {
         if (npc.getEntity() instanceof LivingEntity && npc.getEntity().getType() != EntityType.ARMOR_STAND) {
             NMS.setDestination(npc.getEntity(), dest.getX(), dest.getY(), dest.getZ(), params.speedModifier());
         } else {
-            Vector dir = dest.toVector().subtract(npc.getEntity().getLocation().toVector()).normalize().multiply(0.2);
+            Vector dir = dest.toVector().subtract(npc.getEntity().getLocation().toVector()).normalize()
+                    .multiply(0.2 * params.speedModifier());
             boolean liquidOrInLiquid = MinecraftBlockExaminer.isLiquidOrInLiquid(loc.getBlock());
             if (dY >= 1 && xzDistance <= 0.4 || dY >= 0.2 && liquidOrInLiquid) {
                 dir.add(new Vector(0, 0.75, 0));

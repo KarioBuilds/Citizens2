@@ -5,6 +5,7 @@ import java.util.function.Consumer;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
@@ -12,6 +13,7 @@ import net.citizensnpcs.api.gui.InputMenus;
 import net.citizensnpcs.api.gui.InventoryMenuPage;
 import net.citizensnpcs.api.persistence.Persist;
 import net.citizensnpcs.api.util.Messaging;
+import net.citizensnpcs.trait.ShopTrait.NPCShopStorage;
 import net.citizensnpcs.util.InventoryMultiplexer;
 import net.citizensnpcs.util.Util;
 import net.milkbowl.vault.economy.Economy;
@@ -45,7 +47,7 @@ public class MoneyAction extends NPCShopAction {
     }
 
     @Override
-    public Transaction grant(Entity entity, InventoryMultiplexer inventory, int repeats) {
+    public Transaction grant(NPCShopStorage storage, Entity entity, InventoryMultiplexer inventory, int repeats) {
         if (!(entity instanceof Player))
             return Transaction.fail();
 
@@ -53,23 +55,27 @@ public class MoneyAction extends NPCShopAction {
         Player player = (Player) entity;
         double amount = money * repeats;
 
-        return Transaction.create(() -> true, () -> {
+        return Transaction.create(() -> storage.isUnlimited() || storage.getBalance() - amount >= 0, () -> {
             EconomyResponse response = economy.depositPlayer(player, amount);
             if (response != null
                     && (response.type == ResponseType.FAILURE || response.type == ResponseType.NOT_IMPLEMENTED)) {
                 Messaging.severe("Failed to deposit", amount, "to", player, "in NPC shop:", response.errorMessage);
+            } else {
+                storage.setBalance(storage.getBalance() - amount);
             }
         }, () -> {
             EconomyResponse response = economy.withdrawPlayer(player, amount);
             if (response != null
                     && (response.type == ResponseType.FAILURE || response.type == ResponseType.NOT_IMPLEMENTED)) {
                 Messaging.severe("Failed to withdraw", amount, "from", player, "in NPC shop:", response.errorMessage);
+            } else {
+                storage.setBalance(storage.getBalance() + amount);
             }
         });
     }
 
     @Override
-    public Transaction take(Entity entity, InventoryMultiplexer inventory, int repeats) {
+    public Transaction take(NPCShopStorage storage, Entity entity, InventoryMultiplexer inventory, int repeats) {
         if (!(entity instanceof Player))
             return Transaction.fail();
 
@@ -82,12 +88,16 @@ public class MoneyAction extends NPCShopAction {
             if (response != null
                     && (response.type == ResponseType.FAILURE || response.type == ResponseType.NOT_IMPLEMENTED)) {
                 Messaging.severe("Failed to withdraw", amount, "from", player, "in NPC shop:", response.errorMessage);
+            } else {
+                storage.setBalance(storage.getBalance() + amount);
             }
         }, () -> {
             EconomyResponse response = economy.depositPlayer(player, amount);
             if (response != null
                     && (response.type == ResponseType.FAILURE || response.type == ResponseType.NOT_IMPLEMENTED)) {
                 Messaging.severe("Failed to deposit", amount, "to", player, "in NPC shop:", response.errorMessage);
+            } else {
+                storage.setBalance(storage.getBalance() - amount);
             }
         });
     }
@@ -101,6 +111,11 @@ public class MoneyAction extends NPCShopAction {
             } catch (ClassNotFoundException e) {
                 supported = false;
             }
+        }
+
+        @Override
+        public boolean canUse(HumanEntity entity) {
+            return entity.hasPermission("citizens.npc.shop.editor.actions.edit-money");
         }
 
         @Override

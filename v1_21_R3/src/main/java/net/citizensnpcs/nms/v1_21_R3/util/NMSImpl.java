@@ -1227,14 +1227,16 @@ public class NMSImpl implements NMSBridge {
 
     @Override
     public void markPoseDirty(org.bukkit.entity.Entity entity) {
-        getHandle(entity).getEntityData().markDirty(DATA_POSE);
+        Entity handle = getHandle(entity);
+        handle.getEntityData().markDirty(DATA_POSE);
     }
 
     @Override
     public void mount(org.bukkit.entity.Entity entity, org.bukkit.entity.Entity passenger) {
-        if (getHandle(passenger) == null)
+        Entity handle = getHandle(passenger);
+        if (handle == null)
             return;
-        getHandle(passenger).startRiding(getHandle(entity), true);
+        handle.startRiding(getHandle(entity), true);
     }
 
     @Override
@@ -2341,16 +2343,16 @@ public class NMSImpl implements NMSBridge {
         return NMS.isLeashed(npc, isLeashed, () -> entity.dropLeash());
     }
 
-    @SuppressWarnings("deprecation")
     public static void minecartItemLogic(AbstractMinecart minecart) {
         NPC npc = ((NPCHolder) minecart).getNPC();
         if (npc == null)
             return;
         int offset = npc.data().get(NPC.Metadata.MINECART_OFFSET, 0);
-        minecart.setCustomDisplay(npc.getItemProvider().get() != null);
-        if (npc.getItemProvider().get() != null) {
+        minecart.setCustomDisplay(npc.data().has(NPC.Metadata.ITEM_ID));
+        if (minecart.hasCustomDisplay()) {
             Material mat = npc.getItemProvider().get().getType();
-            minecart.setDisplayBlockState(BuiltInRegistries.BLOCK.byId(mat.getId()).defaultBlockState());
+            minecart.setDisplayBlockState(BuiltInRegistries.BLOCK
+                    .getValue(ResourceLocation.parse(mat.getKey().toString())).defaultBlockState());
         }
         minecart.setDisplayOffset(offset);
     }
@@ -2625,6 +2627,11 @@ public class NMSImpl implements NMSBridge {
 
     public static void setSize(Entity entity, boolean justCreated) {
         try {
+            if (entity instanceof LivingEntity) {
+                AttributeMap map = ((LivingEntity) entity).getAttributes();
+                if (map.hasAttribute(Attributes.SCALE) && Math.abs(map.getValue(Attributes.SCALE) - 1) > 0.01)
+                    return;
+            }
             EntityDimensions entitysize = (EntityDimensions) SIZE_FIELD_GETTER.invoke(entity);
             Pose entitypose = entity.getPose();
             EntityDimensions entitysize1 = entity.getDimensions(entitypose);
@@ -2707,9 +2714,12 @@ public class NMSImpl implements NMSBridge {
     }
 
     private static final MethodHandle ARMADILLO_SCUTE_TIME = NMS.getSetter(Armadillo.class, "cj");
+
     private static final MethodHandle ATTRIBUTE_PROVIDER_MAP = NMS.getFirstGetter(AttributeSupplier.class, Map.class);
+
     private static final MethodHandle ATTRIBUTE_PROVIDER_MAP_SETTER = NMS.getFirstFinalSetter(AttributeSupplier.class,
             Map.class);
+
     private static final MethodHandle ATTRIBUTE_SUPPLIER = NMS.getFirstGetter(AttributeMap.class,
             AttributeSupplier.class);
     private static final MethodHandle AVAILABLE_BEHAVIORS_BY_PRIORITY = NMS.getGetter(Brain.class, "f");
@@ -2757,6 +2767,7 @@ public class NMSImpl implements NMSBridge {
     private static MethodHandle META_COMPOUND_TAG;
     private static final MethodHandle MINECRAFT_CLIENT = NMS.getFirstGetter(YggdrasilMinecraftSessionService.class,
             MinecraftClient.class);
+    public static final MethodHandle MOONRISE_IS_REAL_PLAYER = NMS.getSetter(ServerPlayer.class, "isRealPlayer", false);
     private static final MethodHandle MOVE_CONTROLLER_OPERATION = NMS.getSetter(MoveControl.class, "k");
     private static final MethodHandle NAVIGATION_CREATE_PATHFINDER = NMS
             .getFirstMethodHandleWithReturnType(PathNavigation.class, true, PathFinder.class, int.class);

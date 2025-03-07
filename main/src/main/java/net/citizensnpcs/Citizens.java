@@ -37,7 +37,6 @@ import net.citizensnpcs.api.NMSHelper;
 import net.citizensnpcs.api.ai.speech.SpeechContext;
 import net.citizensnpcs.api.command.CommandManager;
 import net.citizensnpcs.api.command.Injector;
-import net.citizensnpcs.api.event.CitizensDisableEvent;
 import net.citizensnpcs.api.event.CitizensEnableEvent;
 import net.citizensnpcs.api.event.CitizensPreReloadEvent;
 import net.citizensnpcs.api.event.CitizensReloadEvent;
@@ -189,6 +188,10 @@ public class Citizens extends JavaPlugin implements CitizensPlugin {
         return commands;
     }
 
+    public NPCDataStore getDefaultNPCDataStore() {
+        return saves;
+    }
+
     @Override
     public net.citizensnpcs.api.npc.NPCSelector getDefaultNPCSelector() {
         return selector;
@@ -294,7 +297,6 @@ public class Citizens extends JavaPlugin implements CitizensPlugin {
         if (!enabled)
             return;
 
-        Bukkit.getPluginManager().callEvent(new CitizensDisableEvent());
         Editor.leaveAll();
         despawnNPCs(saveOnDisable);
         HandlerList.unregisterAll(this);
@@ -313,6 +315,8 @@ public class Citizens extends JavaPlugin implements CitizensPlugin {
     @Override
     public void onEnable() {
         PhTreeHelper.enablePooling(false);
+        PhTreeHelper.ARRAY_POOLING_POOL_SIZE = 0;
+        PhTreeHelper.ARRAY_POOLING_MAX_ARRAY_SIZE = 0;
         PhTreeHelper.MAX_OBJECT_POOL_SIZE = 0;
 
         CitizensAPI.setImplementation(this);

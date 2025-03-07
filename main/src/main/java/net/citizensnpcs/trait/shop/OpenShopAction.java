@@ -5,6 +5,7 @@ import java.util.function.Consumer;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
@@ -14,6 +15,7 @@ import net.citizensnpcs.api.gui.InputMenus;
 import net.citizensnpcs.api.gui.InventoryMenuPage;
 import net.citizensnpcs.api.persistence.Persist;
 import net.citizensnpcs.trait.ShopTrait.NPCShop;
+import net.citizensnpcs.trait.ShopTrait.NPCShopStorage;
 import net.citizensnpcs.util.InventoryMultiplexer;
 import net.citizensnpcs.util.Util;
 
@@ -41,12 +43,12 @@ public class OpenShopAction extends NPCShopAction {
     }
 
     @Override
-    public Transaction grant(Entity entity, InventoryMultiplexer inventory, int repeats) {
-        return take(entity, inventory, repeats);
+    public Transaction grant(NPCShopStorage storage, Entity entity, InventoryMultiplexer inventory, int repeats) {
+        return take(null, entity, inventory, repeats);
     }
 
     @Override
-    public Transaction take(Entity entity, InventoryMultiplexer inventory, int repeats) {
+    public Transaction take(NPCShopStorage storage, Entity entity, InventoryMultiplexer inventory, int repeats) {
         if (!(entity instanceof Player))
             return Transaction.fail();
         NPCShop shop = ((Citizens) CitizensAPI.getPlugin()).getShops().getShop(shopName);
@@ -61,6 +63,11 @@ public class OpenShopAction extends NPCShopAction {
     }
 
     public static class OpenShopActionGUI implements GUI {
+        @Override
+        public boolean canUse(HumanEntity entity) {
+            return entity.hasPermission("citizens.npc.shop.editor.actions.edit-open-shop");
+        }
+
         @Override
         public InventoryMenuPage createEditor(NPCShopAction previous, Consumer<NPCShopAction> callback) {
             OpenShopAction action = previous == null ? new OpenShopAction() : (OpenShopAction) previous;

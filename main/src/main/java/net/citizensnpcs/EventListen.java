@@ -4,7 +4,6 @@ import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Objects;
 
-import net.citizensnpcs.api.event.NPCMoveEvent;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -95,6 +94,7 @@ import net.citizensnpcs.api.event.NPCDespawnEvent;
 import net.citizensnpcs.api.event.NPCKnockbackEvent;
 import net.citizensnpcs.api.event.NPCLeftClickEvent;
 import net.citizensnpcs.api.event.NPCLinkToPlayerEvent;
+import net.citizensnpcs.api.event.NPCMoveEvent;
 import net.citizensnpcs.api.event.NPCPushEvent;
 import net.citizensnpcs.api.event.NPCRemoveEvent;
 import net.citizensnpcs.api.event.NPCRightClickEvent;
@@ -107,6 +107,7 @@ import net.citizensnpcs.api.npc.NPC;
 import net.citizensnpcs.api.trait.trait.Owner;
 import net.citizensnpcs.api.trait.trait.PlayerFilter;
 import net.citizensnpcs.api.util.Messaging;
+import net.citizensnpcs.api.util.SpigotUtil;
 import net.citizensnpcs.editor.Editor;
 import net.citizensnpcs.npc.ai.NPCHolder;
 import net.citizensnpcs.npc.skin.SkinUpdateTracker;
@@ -285,14 +286,16 @@ public class EventListen implements Listener {
                 new double[] { (event.getChunk().getX() << 4) - 0.5, 0, (event.getChunk().getZ() << 4) - 0.5 },
                 new double[] { (event.getChunk().getX() + 1 << 4) + 0.5, 256,
                         (event.getChunk().getZ() + 1 << 4) + 0.5 }));
-        for (Entity entity : event.getChunk().getEntities()) {
-            NPC npc = plugin.getNPCRegistry().getNPC(entity);
-            // XXX npc#isSpawned() checks valid status which is now inconsistent on chunk unload
-            // between different server software so check for npc.getEntity() == null instead.
-            if (npc == null || npc.getEntity() == null || toDespawn.contains(npc))
-                continue;
+        if (SpigotUtil.getVersion()[1] < 21) {
+            for (Entity entity : event.getChunk().getEntities()) {
+                NPC npc = plugin.getNPCRegistry().getNPC(entity);
+                // XXX npc#isSpawned() checks valid status which is now inconsistent on chunk unload
+                // between different server software so check for npc.getEntity() == null instead.
+                if (npc == null || npc.getEntity() == null || toDespawn.contains(npc))
+                    continue;
 
-            toDespawn.add(npc);
+                toDespawn.add(npc);
+            }
         }
         if (toDespawn.isEmpty())
             return;
@@ -375,7 +378,7 @@ public class EventListen implements Listener {
             Player damager = (Player) damageEvent.getDamager();
 
             if (npc.hasTrait(ClickRedirectTrait.class)) {
-                npc = npc.getTraitNullable(ClickRedirectTrait.class).getRedirectNPC();
+                npc = npc.getTraitNullable(ClickRedirectTrait.class).getRedirectToNPC();
                 if (npc == null)
                     return;
             }
@@ -531,7 +534,9 @@ public class EventListen implements Listener {
     @EventHandler(ignoreCancelled = true)
     public void onNPCLinkToPlayer(NPCLinkToPlayerEvent event) {
         NPC npc = event.getNPC();
-        NMS.markPoseDirty(npc.getEntity());
+        if (npc.isSpawned()) {
+            NMS.markPoseDirty(npc.getEntity());
+        }
         if (npc.getEntity() instanceof SkinnableEntity) {
             SkinnableEntity skinnable = (SkinnableEntity) npc.getEntity();
             if (skinnable.getSkinTracker().getSkin() != null) {
@@ -586,7 +591,7 @@ public class EventListen implements Listener {
         }
         ClickRedirectTrait crt = npc.getTraitNullable(ClickRedirectTrait.class);
         if (crt != null) {
-            npc = crt.getRedirectNPC();
+            npc = crt.getRedirectToNPC();
         }
         pf = npc.getTraitNullable(PlayerFilter.class);
         if (pf != null) {
@@ -648,7 +653,7 @@ public class EventListen implements Listener {
             return;
 
         ClickRedirectTrait crt = npc.getTraitNullable(ClickRedirectTrait.class);
-        if (crt != null && (npc = crt.getRedirectNPC()) == null)
+        if (crt != null && (npc = crt.getRedirectToNPC()) == null)
             return;
 
         Player player = event.getPlayer();
@@ -913,39 +918,6 @@ public class EventListen implements Listener {
         }
     }
 
-    private void registerPushEvent(Class<?> clazz) {
-        try {
-            HandlerList handlers = (HandlerList) clazz.getMethod("getHandlerList").invoke(null);
-            Method getEntity = clazz.getMethod("getEntity");
-            Method getPushedBy = clazz.getMethod("getPushedBy");
-            Method getAcceleration = clazz.getMethod("getAcceleration");
-            handlers.register(new RegisteredListener(new Listener() {
-            }, (listener, event) -> {
-                if (NPCPushEvent.getHandlerList().getRegisteredListeners().length == 0 || event.getClass() != clazz)
-                    return;
-                try {
-                    Entity entity = (Entity) getEntity.invoke(event);
-                    if (!(entity instanceof NPCHolder))
-                        return;
-                    NPC npc = ((NPCHolder) entity).getNPC();
-                    Entity pushedBy = (Entity) getPushedBy.invoke(event);
-                    Vector vector = (Vector) getAcceleration.invoke(event);
-                    NPCPushEvent push = new NPCPushEvent(npc, vector, pushedBy);
-                    if (pushedBy == null && !npc.data().get(NPC.Metadata.COLLIDABLE, !npc.isProtected())) {
-                        push.setCancelled(true);
-                    }
-                    Bukkit.getPluginManager().callEvent(push);
-                    ((Cancellable) event).setCancelled(push.isCancelled());
-                } catch (Throwable ex) {
-                    ex.printStackTrace();
-                }
-            }, EventPriority.NORMAL, plugin, true));
-        } catch (Throwable ex) {
-            Messaging.severe("Error registering push event forwarder");
-            ex.printStackTrace();
-        }
-    }
-
     private void registerMoveEvent(Class<?> clazz) {
         try {
             final HandlerList handlers = (HandlerList) clazz.getMethod("getHandlerList").invoke(null);
@@ -980,6 +952,39 @@ public class EventListen implements Listener {
             }, EventPriority.NORMAL, plugin, true));
         } catch (Throwable ex) {
             Messaging.severe("Error registering move event forwarder");
+            ex.printStackTrace();
+        }
+    }
+
+    private void registerPushEvent(Class<?> clazz) {
+        try {
+            HandlerList handlers = (HandlerList) clazz.getMethod("getHandlerList").invoke(null);
+            Method getEntity = clazz.getMethod("getEntity");
+            Method getPushedBy = clazz.getMethod("getPushedBy");
+            Method getAcceleration = clazz.getMethod("getAcceleration");
+            handlers.register(new RegisteredListener(new Listener() {
+            }, (listener, event) -> {
+                if (NPCPushEvent.getHandlerList().getRegisteredListeners().length == 0 || event.getClass() != clazz)
+                    return;
+                try {
+                    Entity entity = (Entity) getEntity.invoke(event);
+                    if (!(entity instanceof NPCHolder))
+                        return;
+                    NPC npc = ((NPCHolder) entity).getNPC();
+                    Entity pushedBy = (Entity) getPushedBy.invoke(event);
+                    Vector vector = (Vector) getAcceleration.invoke(event);
+                    NPCPushEvent push = new NPCPushEvent(npc, vector, pushedBy);
+                    if (pushedBy == null && !npc.data().get(NPC.Metadata.COLLIDABLE, !npc.isProtected())) {
+                        push.setCancelled(true);
+                    }
+                    Bukkit.getPluginManager().callEvent(push);
+                    ((Cancellable) event).setCancelled(push.isCancelled());
+                } catch (Throwable ex) {
+                    ex.printStackTrace();
+                }
+            }, EventPriority.NORMAL, plugin, true));
+        } catch (Throwable ex) {
+            Messaging.severe("Error registering push event forwarder");
             ex.printStackTrace();
         }
     }

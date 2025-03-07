@@ -235,7 +235,6 @@ import net.minecraft.server.v1_16_R3.AttributeModifiable;
 import net.minecraft.server.v1_16_R3.AttributeProvider;
 import net.minecraft.server.v1_16_R3.AxisAlignedBB;
 import net.minecraft.server.v1_16_R3.BehaviorController;
-import net.minecraft.server.v1_16_R3.Block;
 import net.minecraft.server.v1_16_R3.BlockAccessAir;
 import net.minecraft.server.v1_16_R3.BlockPosition;
 import net.minecraft.server.v1_16_R3.BossBattleServer;
@@ -2142,16 +2141,15 @@ public class NMSImpl implements NMSBridge {
         return navigation.m();
     }
 
-    @SuppressWarnings("deprecation")
     public static void minecartItemLogic(EntityMinecartAbstract minecart) {
         NPC npc = ((NPCHolder) minecart).getNPC();
         if (npc == null)
             return;
         int offset = npc.data().get(NPC.Metadata.MINECART_OFFSET, 0);
-        minecart.a(npc.getItemProvider().get() != null);
-        if (npc.getItemProvider().get() != null) {
+        minecart.a(npc.data().has(NPC.Metadata.ITEM_ID));
+        if (npc.data().has(NPC.Metadata.ITEM_ID)) {
             Material mat = npc.getItemProvider().get().getType();
-            minecart.setDisplayBlock(Block.getByCombinedId(mat.getId()).getBlock().getBlockData());
+            minecart.setDisplayBlock(IRegistry.BLOCK.get(MinecraftKey.a(mat.getKey().toString())).getBlockData());
         }
         minecart.setDisplayBlockOffset(offset);
     }

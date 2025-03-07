@@ -51,6 +51,7 @@ import net.minecraft.server.v1_14_R1.EntityHuman;
 import net.minecraft.server.v1_14_R1.EntityPlayer;
 import net.minecraft.server.v1_14_R1.EnumGamemode;
 import net.minecraft.server.v1_14_R1.EnumItemSlot;
+import net.minecraft.server.v1_14_R1.EnumPistonReaction;
 import net.minecraft.server.v1_14_R1.EnumProtocolDirection;
 import net.minecraft.server.v1_14_R1.GenericAttributes;
 import net.minecraft.server.v1_14_R1.IBlockData;
@@ -121,6 +122,11 @@ public class EntityHumanNPC extends EntityPlayer implements NPCHolder, Skinnable
     }
 
     @Override
+    public int bv() {
+        return NMS.getFallDistance(npc, super.bv());
+    }
+
+    @Override
     public void collide(net.minecraft.server.v1_14_R1.Entity entity) {
         // this method is called by both the entities involved - cancelling
         // it will not stop the NPC from moving.
@@ -128,6 +134,11 @@ public class EntityHumanNPC extends EntityPlayer implements NPCHolder, Skinnable
         if (npc != null) {
             Util.callCollisionEvent(npc, entity.getBukkitEntity());
         }
+    }
+
+    @Override
+    public float cX() {
+        return NMS.getJumpPower(npc, super.cX());
     }
 
     @Override
@@ -221,6 +232,11 @@ public class EntityHumanNPC extends EntityPlayer implements NPCHolder, Skinnable
             return new ChatComponentText("");
         return npc != null ? (IChatBaseComponent) Messaging.minecraftComponentFromRawMessage(npc.getRawName())
                 : super.getPlayerListName();
+    }
+
+    @Override
+    public EnumPistonReaction getPushReaction() {
+        return Util.callPistonPushEvent(npc) ? EnumPistonReaction.IGNORE : super.getPushReaction();
     }
 
     @Override
@@ -324,6 +340,7 @@ public class EntityHumanNPC extends EntityPlayer implements NPCHolder, Skinnable
             super.playerTick();
             return;
         }
+        NMSImpl.callNPCMoveEvent(this);
         entityBaseTick();
         boolean navigating = npc.getNavigator().isNavigating() || controllerMove.b();
         if (!navigating && getBukkitEntity() != null
@@ -344,7 +361,6 @@ public class EntityHumanNPC extends EntityPlayer implements NPCHolder, Skinnable
         }
         updateAI();
         collideNearby();
-        NMSImpl.callNPCMoveEvent(this);
         if (npc.useMinecraftAI()) {
             foodData.a(this);
         }

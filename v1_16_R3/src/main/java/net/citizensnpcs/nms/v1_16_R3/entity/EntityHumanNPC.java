@@ -49,6 +49,7 @@ import net.minecraft.server.v1_16_R3.EntityHuman;
 import net.minecraft.server.v1_16_R3.EntityPlayer;
 import net.minecraft.server.v1_16_R3.EnumGamemode;
 import net.minecraft.server.v1_16_R3.EnumItemSlot;
+import net.minecraft.server.v1_16_R3.EnumPistonReaction;
 import net.minecraft.server.v1_16_R3.EnumProtocolDirection;
 import net.minecraft.server.v1_16_R3.GenericAttributes;
 import net.minecraft.server.v1_16_R3.IBlockData;
@@ -106,6 +107,11 @@ public class EntityHumanNPC extends EntityPlayer implements NPCHolder, Skinnable
     }
 
     @Override
+    public int bP() {
+        return NMS.getFallDistance(npc, super.bP());
+    }
+
+    @Override
     public void collide(net.minecraft.server.v1_16_R3.Entity entity) {
         // this method is called by both the entities involved - cancelling
         // it will not stop the NPC from moving.
@@ -147,6 +153,11 @@ public class EntityHumanNPC extends EntityPlayer implements NPCHolder, Skinnable
                 (Runnable) () -> ((WorldServer) world).removeEntity(EntityHumanNPC.this), 15); // give enough time for
                                                                                                // death and smoke
                                                                                                // animation
+    }
+
+    @Override
+    public float dJ() {
+        return NMS.getJumpPower(npc, super.dJ());
     }
 
     @Override
@@ -193,6 +204,11 @@ public class EntityHumanNPC extends EntityPlayer implements NPCHolder, Skinnable
             return new ChatComponentText("");
         return npc != null ? (IChatBaseComponent) Messaging.minecraftComponentFromRawMessage(npc.getRawName())
                 : super.getPlayerListName();
+    }
+
+    @Override
+    public EnumPistonReaction getPushReaction() {
+        return Util.callPistonPushEvent(npc) ? EnumPistonReaction.IGNORE : super.getPushReaction();
     }
 
     @Override
@@ -296,6 +312,7 @@ public class EntityHumanNPC extends EntityPlayer implements NPCHolder, Skinnable
             super.playerTick();
             return;
         }
+        NMSImpl.callNPCMoveEvent(this);
         entityBaseTick();
         boolean navigating = npc.getNavigator().isNavigating() || ai.getMoveControl().b();
         if (!navigating && getBukkitEntity() != null
@@ -317,7 +334,6 @@ public class EntityHumanNPC extends EntityPlayer implements NPCHolder, Skinnable
         ai.getMoveControl().a();
         ai.getJumpControl().b();
         collideNearby();
-        NMSImpl.callNPCMoveEvent(this);
     }
 
     @Override

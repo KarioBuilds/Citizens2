@@ -194,6 +194,8 @@ public class Messages {
     public static final String HORSE_COLOR_SET = "citizens.commands.npc.horse.color-set";
     public static final String HORSE_DESCRIBE = "citizens.commands.npc.horse.describe";
     public static final String HORSE_STYLE_SET = "citizens.commands.npc.horse.style-set";
+    public static final String HORSE_TAMED_SET = "citizens.commands.npc.horse.tamed-set";
+    public static final String HORSE_TAMED_UNSET = "citizens.commands.npc.horse.tamed-unset";
     public static final String INVALID_AGE = "citizens.commands.npc.age.invalid-age";
     public static final String INVALID_ANCHOR_NAME = "citizens.commands.npc.anchor.invalid-name";
     public static final String INVALID_ANIMATION = "citizens.editors.waypoints.triggers.animation.invalid-animation";
@@ -296,8 +298,10 @@ public class Messages {
     public static final String NPC_COMMAND_ALL_PLAYERS_FORGOTTEN = "citizens.commands.npc.command.all-players-forgotten";
     public static final String NPC_COMMAND_ERRORS_CLEARED = "citizens.commands.npc.command.errors-cleared";
     public static final String NPC_COMMAND_INVALID_ERROR_MESSAGE = "citizens.commands.npc.command.invalid-error-message";
+    public static final String NPC_COMMAND_INVALID_HAND = "citizens.commands.npc.command.invalid-hand";
     public static final String NPC_COMMAND_INVALID_PLAYER = "citizens.commands.npc.command.invalid-player";
     public static final String NPC_COMMAND_PLAYER_FORGOTTEN = "citizens.commands.npc.command.player-forgotten";
+    public static final String NPC_COMMAND_PLAYER_NOT_VALID = "citizens.commands.npc.command.invalid-player";
     public static final String NPC_COPIED = "citizens.commands.npc.copy.copied";
     public static final String NPC_CREATE_INVALID_MOBTYPE = "citizens.commands.npc.create.invalid-mobtype";
     public static final String NPC_CREATE_MISSING_MOBTYPE = "citizens.commands.npc.create.mobtype-missing";
@@ -362,6 +366,8 @@ public class Messages {
     public static final String PLAYERFILTER_EMPTY_SET = "citizens.commands.npc.playerfilter.emptied";
     public static final String PLAYERFILTER_GROUP_ADDED = "citizens.commands.npc.playerfilter.group-added";
     public static final String PLAYERFILTER_GROUP_REMOVED = "citizens.commands.npc.playerfilter.group-removed";
+    public static final String PLAYERFILTER_PERMISSION_ADDED = "citizens.commands.npc.playerfilter.permission-added";
+    public static final String PLAYERFILTER_PERMISSION_REMOVED = "citizens.commands.npc.playerfilter.permission-removed";
     public static final String PLAYERFILTER_PLAYER_ADDED = "citizens.commands.npc.playerfilter.added";
     public static final String PLAYERFILTER_PLAYER_REMOVED = "citizens.commands.npc.playerfilter.removed";
     public static final String POLAR_BEAR_REARING = "citizens.commands.npc.polarbear.rearing-set";
@@ -446,6 +452,7 @@ public class Messages {
     public static final String TPTO_ENTITY_NOT_FOUND = "citizens.commands.npc.tpto.to-not-found";
     public static final String TPTO_SUCCESS = "citizens.commands.npc.tpto.success";
     public static final String TRACKING_RANGE_SET = "citizens.commands.npc.trackingrange.set";
+    public static final String TRAIT_DATA_CLEARED = "citizens.commands.trait.clearsaves.cleared";
     public static final String TRAIT_LOAD_FAILED = "citizens.notifications.trait-load-failed";
     public static final String TRAIT_ONSPAWN_FAILED = "citizens.notifications.trait-onspawn-failed";
     public static final String TRAITS_ADDED = "citizens.commands.trait.added";

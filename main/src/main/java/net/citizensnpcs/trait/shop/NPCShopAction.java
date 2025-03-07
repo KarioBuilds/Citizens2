@@ -7,6 +7,7 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
@@ -15,6 +16,7 @@ import com.google.common.collect.Lists;
 import net.citizensnpcs.api.gui.InventoryMenuPage;
 import net.citizensnpcs.api.persistence.PersistenceLoader;
 import net.citizensnpcs.api.persistence.PersisterRegistry;
+import net.citizensnpcs.trait.ShopTrait.NPCShopStorage;
 import net.citizensnpcs.util.InventoryMultiplexer;
 
 public abstract class NPCShopAction implements Cloneable {
@@ -31,19 +33,23 @@ public abstract class NPCShopAction implements Cloneable {
 
     public abstract int getMaxRepeats(Entity entity, InventoryMultiplexer inventory);
 
-    public abstract Transaction grant(Entity entity, InventoryMultiplexer inventory, int repeats);
+    public abstract Transaction grant(NPCShopStorage storage, Entity entity, InventoryMultiplexer inventory,
+            int repeats);
 
     public Transaction grant(Player player, int repeats) {
-        return grant(player, new InventoryMultiplexer(player.getInventory()), repeats);
+        return grant(new NPCShopStorage(), player, new InventoryMultiplexer(player.getInventory()), repeats);
     }
 
-    public abstract Transaction take(Entity entity, InventoryMultiplexer inventory, int repeats);
+    public abstract Transaction take(NPCShopStorage storage, Entity entity, InventoryMultiplexer inventory,
+            int repeats);
 
     public Transaction take(Player player, int repeats) {
-        return take(player, new InventoryMultiplexer(player.getInventory()), repeats);
+        return take(new NPCShopStorage(), player, new InventoryMultiplexer(player.getInventory()), repeats);
     }
 
     public static interface GUI {
+        public boolean canUse(HumanEntity entity);
+
         public InventoryMenuPage createEditor(NPCShopAction previous, Consumer<NPCShopAction> callback);
 
         public ItemStack createMenuItem(NPCShopAction previous);
