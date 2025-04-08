@@ -265,15 +265,20 @@ public class NPCCommands {
 
     @Command(
             aliases = { "npc" },
-            usage = "aggressive [true|false]",
+            usage = "aggressive [true|false] (-t(emporary))",
             desc = "",
+            flags = "t",
             modifiers = { "aggressive" },
             min = 1,
             max = 2,
             permission = "citizens.npc.aggressive")
     public void aggressive(CommandContext args, CommandSender sender, NPC npc, @Arg(1) Boolean aggressive) {
         boolean aggro = aggressive != null ? aggressive : !npc.data().get(NPC.Metadata.AGGRESSIVE, false);
-        npc.data().set(NPC.Metadata.AGGRESSIVE, aggro);
+        if (args.hasFlag('t')) {
+            npc.data().set(NPC.Metadata.AGGRESSIVE, aggressive);
+        } else {
+            npc.data().setPersistent(NPC.Metadata.AGGRESSIVE, aggro);
+        }
         NMS.setAggressive(npc.getEntity(), aggro);
     }
 
@@ -2887,7 +2892,9 @@ public class NPCCommands {
             if (npc != null && toSelect.getId() == npc.getId())
                 throw new CommandException(Messages.NPC_ALREADY_SELECTED);
             selector.select(sender, toSelect);
-            Messaging.sendWithNPC(sender, Setting.SELECTION_MESSAGE.asString(), toSelect);
+            if (!Setting.SELECTION_MESSAGE.asString().isEmpty()) {
+                Messaging.sendWithNPC(sender, Setting.SELECTION_MESSAGE.asString(), toSelect);
+            }
         };
 
         NPCRegistry registry = registryName != null ? CitizensAPI.getNamedNPCRegistry(registryName)
