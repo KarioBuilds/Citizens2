@@ -141,7 +141,7 @@ public class HologramTrait extends Trait {
     private HologramRenderer createNameRenderer() {
         HologramRenderer renderer;
         // String setting = SpigotUtil.getVersion()[1] <= 8 ? "armorstand" : "areaeffectcloud";
-        String setting = "armorstand_vehicle";
+        String setting = SpigotUtil.getVersion()[1] >= 20 ? "armorstand_vehicle" : "armorstand";
         renderer = createRenderer(setting);
         if (HologramRendererCreateEvent.handlers.getRegisteredListeners().length > 0) {
             HologramRendererCreateEvent event = new HologramRendererCreateEvent(npc, renderer, true);
@@ -334,6 +334,7 @@ public class HologramTrait extends Trait {
             }
             if (updatePosition || nameLine.renderer.getEntities().size() == 0) {
                 nameLine.render(offset);
+                nameLine.renderer.getEntities().forEach(e -> NMS.setSneaking(e, NMS.isSneaking(npc.getEntity())));
             }
         }
         for (int i = 0; i < lines.size(); i++) {
