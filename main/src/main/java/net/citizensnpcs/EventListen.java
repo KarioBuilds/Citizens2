@@ -405,7 +405,7 @@ public class EventListen implements Listener {
         }
     }
 
-    @EventHandler(ignoreCancelled = true)
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onEntityDeath(EntityDeathEvent event) {
         NPC npc = plugin.getNPCRegistry().getNPC(event.getEntity());
         if (npc == null)
@@ -628,7 +628,7 @@ public class EventListen implements Listener {
         checkCreationEvent(event);
     }
 
-    @EventHandler(ignoreCancelled = true)
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onPlayerDeath(PlayerDeathEvent event) {
         NPC npc = plugin.getNPCRegistry().getNPC(event.getEntity());
         if (npc == null)
@@ -773,9 +773,9 @@ public class EventListen implements Listener {
     public void onPotionSplashEvent(PotionSplashEvent event) {
         for (LivingEntity entity : event.getAffectedEntities()) {
             NPC npc = plugin.getNPCRegistry().getNPC(entity);
-            if (npc == null) {
+            if (npc == null)
                 continue;
-            }
+
             if (npc.isProtected()) {
                 event.setIntensity(entity, 0);
             }

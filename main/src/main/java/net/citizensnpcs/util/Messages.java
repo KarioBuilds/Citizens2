@@ -214,6 +214,7 @@ public class Messages {
     public static final String INVALID_OCELOT_TYPE = "citizens.commands.npc.ocelot.invalid-type";
     public static final String INVALID_PANDA_GENE = "citizens.commands.npc.panda.invalid-gene";
     public static final String INVALID_PARROT_VARIANT = "citizens.commands.npc.parrot.invalid-variant";
+    public static final String INVALID_PIG_VARIANT = "citizens.commands.npc.pig.invalid-variant";
     public static final String INVALID_POSE_NAME = "citizens.commands.npc.pose.invalid-name";
     public static final String INVALID_PROFESSION = "citizens.commands.npc.profession.invalid-profession";
     public static final String INVALID_RABBIT_TYPE = "citizens.commands.npc.rabbittype.invalid-type";
@@ -222,7 +223,6 @@ public class Messages {
     public static final String INVALID_SHULKER_COLOR = "citizens.commands.npc.shulker.invalid-color";
     public static final String INVALID_SKIN_FILE = "citizens.commands.npc.skin.invalid-file";
     public static final String INVALID_SOUND = "citizens.commands.npc.sound.invalid-sound";
-    public static final String INVALID_SPAWN_LOCATION = "citizens.commands.npc.create.invalid-location";
     public static final String INVALID_SPEECH_BUBBLES_DURATION = "citizens.commands.npc.text.invalid-speech-bubbles-duration";
     public static final String INVALID_TRIGGER_TELEPORT_FORMAT = "citizens.editors.waypoints.triggers.teleport.invalid-format";
     public static final String INVALID_TROPICALFISH_COLOR = "citizens.commands.npc.tropicalfish.invalid-color";
@@ -243,11 +243,8 @@ public class Messages {
     public static final String LINEAR_WAYPOINT_EDITOR_CYCLE_SET = "citizens.editors.waypoints.linear.cycle-set";
     public static final String LINEAR_WAYPOINT_EDITOR_CYCLE_UNSET = "citizens.editors.waypoints.linear.cycle-unset";
     public static final String LINEAR_WAYPOINT_EDITOR_END = "citizens.editors.waypoints.linear.end";
-    public static final String LINEAR_WAYPOINT_EDITOR_NOT_SHOWING_MARKERS = "citizens.editors.waypoints.linear.not-showing-markers";
     public static final String LINEAR_WAYPOINT_EDITOR_RANGE_EXCEEDED = "citizens.editors.waypoints.linear.range-exceeded";
     public static final String LINEAR_WAYPOINT_EDITOR_REMOVED_WAYPOINT = "citizens.editors.waypoints.linear.removed-waypoint";
-    public static final String LINEAR_WAYPOINT_EDITOR_SELECTED_WAYPOINT = "citizens.editors.waypoints.linear.selected-waypoint";
-    public static final String LINEAR_WAYPOINT_EDITOR_SHOWING_MARKERS = "citizens.editors.waypoints.linear.showing-markers";
     public static final String LINEAR_WAYPOINT_EDITOR_WAYPOINTS_CLEARED = "citizens.editors.waypoints.linear.waypoints-cleared";
     public static final String LINKEDBODY_SET = "citizens.commands.npc.lookclose.linkedbody-set";
     public static final String LINKEDBODY_UNSET = "citizens.commands.npc.lookclose.linkedbody-unset";
@@ -358,6 +355,7 @@ public class Messages {
     public static final String PHANTOM_STATE_SET = "citizens.commands.npc.phantom.phantom-set";
     public static final String PICKUP_ITEMS_SET = "citizens.commands.npc.pickupitems.set";
     public static final String PICKUP_ITEMS_UNSET = "citizens.commands.npc.pickupitems.unset";
+    public static final String PIG_VARIANT_SET = "citizens.commands.npc.pig.variant-set";
     public static final String PIGLIN_DANCING_SET = "citizens.commands.npc.piglin.dancing-set";
     public static final String PIGLIN_DANCING_UNSET = "citizens.commands.npc.piglin.dancing-unset";
     public static final String PLAYERFILTER_ALLOWLIST_SET = "citizens.commands.npc.playerfilter.allowlist-set";
@@ -377,6 +375,8 @@ public class Messages {
     public static final String POSE_ALREADY_EXISTS = "citizens.commands.npc.pose.already-exists";
     public static final String POSE_MISSING = "citizens.commands.npc.pose.missing";
     public static final String POSE_REMOVED = "citizens.commands.npc.pose.removed";
+    public static final String POTION_EFFECT_ADDED = "citizens.commands.npc.potioneffects.effect-added";
+    public static final String POTION_EFFECT_REMOVED = "citizens.commands.npc.potioneffects.effect-removed";
     public static final String POWERED_SET = "citizens.commands.npc.powered.set";
     public static final String POWERED_STOPPED = "citizens.commands.npc.powered.stopped";
     public static final String PROFESSION_SET = "citizens.commands.npc.profession.set";
@@ -394,6 +394,7 @@ public class Messages {
     public static final String SHEARED_STOPPED = "citizens.editors.equipment.sheared-stopped";
     public static final String SHEEP_COLOR_SET = "citizens.commands.npc.sheep.color-set";
     public static final String SHOP_DELETED = "citizens.commands.npc.shop.deleted";
+    public static final String SHOP_NOT_FOUND = "citizens.commands.npc.shop.shop-not-found";
     public static final String SHOP_PLAYER_NOT_FOUND = "citizens.commands.npc.shop.show-player-not-found";
     public static final String SHULKER_COLOR_SET = "citizens.commands.npc.shulker.color-set";
     public static final String SHULKER_PEEK_SET = "citizens.commands.npc.shulker.peek-set";
@@ -488,6 +489,9 @@ public class Messages {
     public static final String WARDEN_ANGER_ADDED = "citizens.commands.npc.warden.anger-added";
     public static final String WARDEN_POSE_SET = "citizens.commands.npc.warden.pose-set";
     public static final String WAYPOINT_ADDED = "citizens.commands.waypoints.add.waypoint-added";
+    public static final String WAYPOINT_EDITOR_NOT_SHOWING_MARKERS = "citizens.editors.waypoints.linear.not-showing-markers";
+    public static final String WAYPOINT_EDITOR_SELECTED_WAYPOINT = "citizens.editors.waypoints.linear.selected-waypoint";
+    public static final String WAYPOINT_EDITOR_SHOWING_MARKERS = "citizens.editors.waypoints.linear.showing-markers";
     public static final String WAYPOINT_PROVIDER_SET = "citizens.waypoints.set-provider";
     public static final String WAYPOINT_REMOVED = "citizens.commands.waypoints.waypoint-removed";
     public static final String WAYPOINT_TELEPORTING_DISABLED = "citizens.commands.waypoints.disableteleporting.disabled";

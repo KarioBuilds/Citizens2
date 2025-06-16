@@ -17,7 +17,6 @@ import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.player.PlayerTeleportEvent.TeleportCause;
-import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import com.google.common.base.Throwables;
@@ -112,8 +111,6 @@ public class CitizensNPC extends AbstractNPC {
         if (getEntity() instanceof SkinnableEntity) {
             ((SkinnableEntity) getEntity()).getSkinTracker().onRemoveNPC();
         }
-        getEntity().removeMetadata("NPC", CitizensAPI.getPlugin());
-        getEntity().removeMetadata("NPC-ID", CitizensAPI.getPlugin());
         if (reason == DespawnReason.DEATH) {
             entityController.die();
         } else {
@@ -314,8 +311,6 @@ public class CitizensNPC extends AbstractNPC {
         }
         getOrAddTrait(CurrentLocation.class).setLocation(at);
         entityController.create(at.clone(), this);
-        getEntity().setMetadata("NPC", new FixedMetadataValue(CitizensAPI.getPlugin(), true));
-        getEntity().setMetadata("NPC-ID", new FixedMetadataValue(CitizensAPI.getPlugin(), getId()));
 
         if (getEntity() instanceof SkinnableEntity && !hasTrait(SkinLayers.class)) {
             ((SkinnableEntity) getEntity()).setSkinFlags(EnumSet.allOf(SkinLayers.Layer.class));

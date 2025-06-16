@@ -36,7 +36,6 @@ import org.joml.Vector3d;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 
 import net.citizensnpcs.Settings.Setting;
@@ -380,11 +379,14 @@ public class HologramTrait extends Trait {
     }
 
     public void setDefaultBackgroundColor(Color color) {
-        this.defaultBackgroundColor = color;
-        for (HologramLine line : Iterables.concat(lines, ImmutableList.of(nameLine))) {
+        defaultBackgroundColor = color;
+        for (HologramLine line : lines) {
             if (line.backgroundColor == null) {
                 line.setBackgroundColor(color);
             }
+        }
+        if (nameLine != null && nameLine.backgroundColor == null) {
+            nameLine.setBackgroundColor(color);
         }
         reloadLineHolograms();
     }
@@ -690,6 +692,10 @@ public class HologramTrait extends Trait {
         public void setRenderer(HologramRenderer renderer) {
             Objects.requireNonNull(renderer);
             this.renderer = renderer;
+        }
+
+        public static HandlerList getHandlerList() {
+            return handlers;
         }
 
         private static final HandlerList handlers = new HandlerList();
