@@ -13,6 +13,8 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.HumanEntity;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.Damageable;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.Repairable;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
@@ -156,9 +158,22 @@ public class ItemAction extends NPCShopAction {
         if (a.getType() != b.getType() || metaFilter.size() > 0 && !metaMatches(a, b, metaFilter))
             return false;
 
-        if (metaFilter.size() == 0 && !a.isSimilar(b))
-            return false;
+        // remove common footgun - repair_cost is often added but minecraft ignores it in similarity comparisons
+        if (metaFilter.size() == 0 && !requireUndamaged && a.getItemMeta() instanceof Repairable
+                && b.getItemMeta() instanceof Repairable) {
+            a = a.clone();
+            b = b.clone();
 
+            ItemMeta meta = a.getItemMeta();
+            ((Repairable) meta).setRepairCost(0);
+            a.setItemMeta(meta);
+
+            meta = b.getItemMeta();
+            ((Repairable) meta).setRepairCost(0);
+            b.setItemMeta(meta);
+            if (!a.isSimilar(b))
+                return false;
+        }
         return true;
     }
 
