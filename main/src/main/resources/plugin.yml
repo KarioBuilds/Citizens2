@@ -23,8 +23,8 @@ commands:
     aliases: [tpl]
     description: Template commands
     permission: citizens.templates.help
-  waypoint:
-    aliases: [waypoints, wp]
+  waypoints:
+    aliases: [wp]
     description: Waypoint commands
     permission: citizens.waypoints.help 
 permissions:
@@ -49,12 +49,14 @@ permissions:
   citizens.npc.breakblock: {default:op}
   citizens.npc.camel: {default:op}
   citizens.npc.cat: {default:op}
+  citizens.npc.chicken: {default:op}
   citizens.npc.chunkload: {default:op}
   citizens.npc.collidable: {default:op}
   citizens.npc.command: {default:op}
   citizens.npc.configgui: {default:op}
   citizens.npc.edit.copier: {default:op}
   citizens.npc.copy: {default:op}
+  citizens.npc.cow: {default:op}
   citizens.npc.create: {default:op}
   citizens.npc.debug: {default:op}
   citizens.npc.deselect: {default:op}
@@ -113,6 +115,7 @@ permissions:
   citizens.npc.pausepathfinding: {default:op}
   citizens.npc.phantom: {default:op}
   citizens.npc.pickupitems: {default:op}
+  citizens.npc.pig: {default:op}
   citizens.npc.piglin: {default:op}
   citizens.npc.playerfilter: {default:op}
   citizens.npc.playerlist: {default:op}
@@ -471,6 +474,8 @@ permissions:
   citizens.npc.controllable.spruce_chest_boat: {default:op}
   citizens.npc.create.creaking: {default:op}
   citizens.npc.controllable.creaking: {default:op}
+  citizens.npc.create.happy_ghast: {default:op}
+  citizens.npc.controllable.happy_ghast: {default:op}
   citizens.npc.create.fishing_bobber: {default:op}
   citizens.npc.controllable.fishing_bobber: {default:op}
   citizens.npc.create.lightning_bolt: {default:op}
@@ -652,6 +657,7 @@ permissions:
       citizens.npc.breakblock: true
       citizens.npc.camel: true
       citizens.npc.cat: true
+      citizens.npc.chicken: true
       citizens.npc.chunkload: true
       citizens.npc.collidable: true
       citizens.npc.command: true
@@ -725,6 +731,7 @@ permissions:
       citizens.npc.controllable.glow_squid: true
       citizens.npc.controllable.goat: true
       citizens.npc.controllable.guardian: true
+      citizens.npc.controllable.happy_ghast: true
       citizens.npc.controllable.hoglin: true
       citizens.npc.controllable.hopper_minecart: true
       citizens.npc.controllable.horse: true
@@ -814,6 +821,7 @@ permissions:
       citizens.npc.controllable.zombie_villager: true
       citizens.npc.controllable.zombified_piglin: true
       citizens.npc.copy: true
+      citizens.npc.cow: true
       citizens.npc.create: true
       citizens.npc.create.acacia_boat: true
       citizens.npc.create.acacia_chest_boat: true
@@ -877,6 +885,7 @@ permissions:
       citizens.npc.create.glow_squid: true
       citizens.npc.create.goat: true
       citizens.npc.create.guardian: true
+      citizens.npc.create.happy_ghast: true
       citizens.npc.create.hoglin: true
       citizens.npc.create.hopper_minecart: true
       citizens.npc.create.horse: true
@@ -1128,6 +1137,7 @@ permissions:
       citizens.npc.pausepathfinding: true
       citizens.npc.phantom: true
       citizens.npc.pickupitems: true
+      citizens.npc.pig: true
       citizens.npc.piglin: true
       citizens.npc.playerfilter: true
       citizens.npc.playerlist: true
@@ -1212,6 +1222,7 @@ permissions:
       citizens.npc.breakblock: true
       citizens.npc.camel: true
       citizens.npc.cat: true
+      citizens.npc.chicken: true
       citizens.npc.chunkload: true
       citizens.npc.collidable: true
       citizens.npc.command: true
@@ -1285,6 +1296,7 @@ permissions:
       citizens.npc.controllable.glow_squid: true
       citizens.npc.controllable.goat: true
       citizens.npc.controllable.guardian: true
+      citizens.npc.controllable.happy_ghast: true
       citizens.npc.controllable.hoglin: true
       citizens.npc.controllable.hopper_minecart: true
       citizens.npc.controllable.horse: true
@@ -1374,6 +1386,7 @@ permissions:
       citizens.npc.controllable.zombie_villager: true
       citizens.npc.controllable.zombified_piglin: true
       citizens.npc.copy: true
+      citizens.npc.cow: true
       citizens.npc.create: true
       citizens.npc.create.acacia_boat: true
       citizens.npc.create.acacia_chest_boat: true
@@ -1437,6 +1450,7 @@ permissions:
       citizens.npc.create.glow_squid: true
       citizens.npc.create.goat: true
       citizens.npc.create.guardian: true
+      citizens.npc.create.happy_ghast: true
       citizens.npc.create.hoglin: true
       citizens.npc.create.hopper_minecart: true
       citizens.npc.create.horse: true
@@ -1688,6 +1702,7 @@ permissions:
       citizens.npc.pausepathfinding: true
       citizens.npc.phantom: true
       citizens.npc.pickupitems: true
+      citizens.npc.pig: true
       citizens.npc.piglin: true
       citizens.npc.playerfilter: true
       citizens.npc.playerlist: true
@@ -1964,6 +1979,7 @@ permissions:
       citizens.npc.create.glow_squid: true
       citizens.npc.create.goat: true
       citizens.npc.create.guardian: true
+      citizens.npc.create.happy_ghast: true
       citizens.npc.create.hoglin: true
       citizens.npc.create.hopper_minecart: true
       citizens.npc.create.horse: true
@@ -2127,6 +2143,7 @@ permissions:
       citizens.npc.controllable.glow_squid: true
       citizens.npc.controllable.goat: true
       citizens.npc.controllable.guardian: true
+      citizens.npc.controllable.happy_ghast: true
       citizens.npc.controllable.hoglin: true
       citizens.npc.controllable.hopper_minecart: true
       citizens.npc.controllable.horse: true

@@ -6,7 +6,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -708,6 +707,17 @@ public class NMSImpl implements NMSBridge {
     }
 
     @Override
+    public float getMovementSpeed(org.bukkit.entity.Entity entity) {
+        if (entity == null || !(entity instanceof org.bukkit.entity.LivingEntity))
+            return DEFAULT_SPEED;
+        LivingEntity handle = getHandle((org.bukkit.entity.LivingEntity) entity);
+        if (handle == null)
+            return DEFAULT_SPEED;
+
+        return (float) handle.getAttributeBaseValue(Attributes.MOVEMENT_SPEED);
+    }
+
+    @Override
     public EntityPacketTracker getPacketTracker(org.bukkit.entity.Entity entity) {
         ServerLevel server = (ServerLevel) getHandle(entity).level();
         TrackedEntity tracked = server.getChunkSource().chunkMap.entityMap.get(entity.getEntityId());
@@ -785,17 +795,6 @@ public class NMSImpl implements NMSBridge {
     public org.bukkit.entity.Entity getSource(BlockCommandSender sender) {
         Entity source = ((CraftBlockCommandSender) sender).getWrapper().getEntity();
         return source != null ? source.getBukkitEntity() : null;
-    }
-
-    @Override
-    public float getSpeedFor(NPC npc) {
-        if (!npc.isSpawned() || !(npc.getEntity() instanceof org.bukkit.entity.LivingEntity))
-            return DEFAULT_SPEED;
-        LivingEntity handle = getHandle((org.bukkit.entity.LivingEntity) npc.getEntity());
-        if (handle == null) {
-            return DEFAULT_SPEED;
-        }
-        return (float) handle.getAttributeBaseValue(Attributes.MOVEMENT_SPEED);
     }
 
     @Override
@@ -1443,6 +1442,11 @@ public class NMSImpl implements NMSBridge {
     }
 
     @Override
+    public void sendComponent(Player player, Object component) {
+        ((ServerPlayer) getHandle(player)).sendSystemMessage((Component) component);
+    }
+
+    @Override
     public void sendPositionUpdate(org.bukkit.entity.Entity from, Collection<Player> to, boolean position,
             Float bodyYaw, Float pitch, Float headYaw) {
         List<Packet<?>> toSend = getPositionUpdate(from, position, bodyYaw, pitch, headYaw);
@@ -2017,19 +2021,19 @@ public class NMSImpl implements NMSBridge {
     public void updatePathfindingRange(NPC npc, float pathfindingRange) {
         if (!npc.isSpawned() || !npc.getEntity().getType().isAlive())
             return;
-        LivingEntity en = getHandle((org.bukkit.entity.LivingEntity) npc.getEntity());
-        if (en instanceof MobAI) {
-            ((MobAI) en).updatePathfindingRange(pathfindingRange);
+        LivingEntity handle = getHandle((org.bukkit.entity.LivingEntity) npc.getEntity());
+        if (handle instanceof MobAI) {
+            ((MobAI) handle).updatePathfindingRange(pathfindingRange);
             return;
         }
         if (NAVIGATION_PATHFINDER == null)
             return;
-        PathNavigation navigation = ((Mob) en).getNavigation();
-        AttributeInstance inst = en.getAttribute(Attributes.FOLLOW_RANGE);
+        PathNavigation navigation = ((Mob) handle).getNavigation();
+        AttributeInstance inst = handle.getAttribute(Attributes.FOLLOW_RANGE);
         inst.setBaseValue(pathfindingRange);
-        int mc = Mth.floor(en.getAttributeBaseValue(Attributes.FOLLOW_RANGE) * 16.0D);
+        int exploreRange = Mth.floor(handle.getAttributeBaseValue(Attributes.FOLLOW_RANGE) * 16.0D);
         try {
-            NAVIGATION_PATHFINDER.invoke(navigation, NAVIGATION_CREATE_PATHFINDER.invoke(navigation, mc));
+            NAVIGATION_PATHFINDER.invoke(navigation, NAVIGATION_CREATE_PATHFINDER.invoke(navigation, exploreRange));
         } catch (Throwable e) {
             e.printStackTrace();
         }
@@ -2210,9 +2214,9 @@ public class NMSImpl implements NMSBridge {
         for (GoalSelector selector : goalSelectors) {
             try {
                 Collection<?> list = selector.getAvailableGoals();
-                if (!list.isEmpty()) {
-                    npc.data().set("selector" + i, Lists.newArrayList(list));
-                }
+                if (list.isEmpty())
+                    continue;
+                npc.data().set("selector" + i, Lists.newArrayList(list));
                 list.clear();
             } catch (Exception e) {
                 Messaging.logTr(Messages.ERROR_CLEARING_GOALS, e.getLocalizedMessage());
@@ -2719,17 +2723,24 @@ public class NMSImpl implements NMSBridge {
             return;
         if (npc.useMinecraftAI()) {
             restoreGoals(npc, entity.goalSelector, entity.targetSelector);
-            if (npc.data().has("behavior-map")) {
-                Map behavior = npc.data().get("behavior-map");
-                getBehaviorMap(entity).putAll(behavior);
-                npc.data().remove("behavior-map");
+            if (npc.data().has("brain")) {
+                try {
+                    BRAIN_SETTER.invoke(entity, npc.data().get("brain"));
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                }
+                npc.data().remove("brain");
             }
         } else {
             clearGoals(npc, entity.goalSelector, entity.targetSelector);
             Map behaviorMap = getBehaviorMap(entity);
-            if (behaviorMap.size() > 0) {
-                npc.data().set("behavior-map", new HashMap(behaviorMap));
-                behaviorMap.clear();
+            if (!npc.data().has("brain") || behaviorMap.size() > 0) {
+                npc.data().set("brain", entity.getBrain());
+                try {
+                    BRAIN_SETTER.invoke(entity, entity.getBrain().copyWithoutBehaviors());
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                }
             }
         }
     }
@@ -2745,6 +2756,7 @@ public class NMSImpl implements NMSBridge {
             EntityType.SILVERFISH, EntityType.SHULKER, EntityType.ENDERMITE, EntityType.ENDER_DRAGON, EntityType.BAT,
             EntityType.SLIME, EntityType.DOLPHIN, EntityType.MAGMA_CUBE, EntityType.HORSE, EntityType.GHAST,
             EntityType.HAPPY_GHAST, EntityType.SHULKER, EntityType.PHANTOM);
+    private static final MethodHandle BRAIN_SETTER = NMS.getFirstSetter(LivingEntity.class, Brain.class);
     private static final MethodHandle BUKKITENTITY_FIELD_SETTER = NMS.getSetter(Entity.class, "bukkitEntity");
     private static final MethodHandle CHUNKMAP_UPDATE_PLAYER_STATUS = NMS.getMethodHandle(ChunkMap.class, "a", true,
             ServerPlayer.class, boolean.class);

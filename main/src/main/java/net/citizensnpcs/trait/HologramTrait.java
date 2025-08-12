@@ -283,6 +283,7 @@ public class HologramTrait extends Trait {
      * Removes the line at the specified index
      *
      * @param idx
+     *            Line Index
      */
     public void removeLine(int idx) {
         if (idx < 0 || idx >= lines.size())
@@ -315,11 +316,11 @@ public class HologramTrait extends Trait {
                 || lastLoc.getWorld() != npcLoc.getWorld() || lastLoc.distance(npcLoc) >= 0.001
                 || lastNameplateVisible != nameplateVisible
                 || Math.abs(lastEntityBbHeight - NMS.getBoundingBoxHeight(npc.getEntity())) >= 0.05;
-        boolean updateName = false;
+        boolean updateText = false;
 
         if (t++ >= Setting.HOLOGRAM_UPDATE_RATE.asTicks() + Util.getFastRandom().nextInt(3) /* add some jitter */) {
             t = 0;
-            updateName = true;
+            updateText = true;
         }
         lastNameplateVisible = nameplateVisible;
 
@@ -328,7 +329,7 @@ public class HologramTrait extends Trait {
             lastEntityBbHeight = NMS.getBoundingBoxHeight(npc.getEntity());
         }
         if (nameLine != null) {
-            if (updateName) {
+            if (updateText) {
                 nameLine.setText(npc.getRawName());
             }
             if (updatePosition || nameLine.renderer.getEntities().size() == 0) {
@@ -347,7 +348,7 @@ public class HologramTrait extends Trait {
                 offset.y = getHeight(i);
                 line.render(offset);
             }
-            if (updateName) {
+            if (updateText) {
                 line.setText(line.text);
             }
         }
@@ -379,13 +380,14 @@ public class HologramTrait extends Trait {
     }
 
     public void setDefaultBackgroundColor(Color color) {
+        Color old = defaultBackgroundColor;
         defaultBackgroundColor = color;
         for (HologramLine line : lines) {
-            if (line.backgroundColor == null) {
+            if (old == line.backgroundColor) {
                 line.setBackgroundColor(color);
             }
         }
-        if (nameLine != null && nameLine.backgroundColor == null) {
+        if (nameLine != null && nameLine.backgroundColor == old) {
             nameLine.setBackgroundColor(color);
         }
         reloadLineHolograms();
@@ -594,12 +596,18 @@ public class HologramTrait extends Trait {
         void destroy();
 
         /**
-         * @return Any associated hologram entities. Used in {@link #getEntities()}.
+         * Gets hologram entities associated with the Hologram Trait.
+         * @implNote Known implementations:
+         * <ul>
+         *     <li>{@link ItemRenderer#getEntities()}</li>
+         *     <li>{@link SingleEntityHologramRenderer#getEntities()}</li>
+         * </ul>
+         * @return Any associated hologram entities.
          */
         Collection<Entity> getEntities();
 
         /**
-         * If {@link NPC.Metadata.HOLOGRAM_RENDERER} is set on any entity and ProtocolLib is enabled, this method will
+         * If {@link NPC.Metadata#HOLOGRAM_RENDERER} is set on any entity and ProtocolLib is enabled, this method will
          * be called to modify the name per-player. Note: this should be async-safe. This method is fragile and may be
          * moved elsewhere.
          *
@@ -612,7 +620,7 @@ public class HologramTrait extends Trait {
         String getPerPlayerText(NPC hologram, Player viewer);
 
         /**
-         * If {@link NPC.Metadata.HOLOGRAM_RENDERER} is set on any entity and ProtocolLib is enabled, returns whether
+         * If {@link NPC.Metadata#HOLOGRAM_RENDERER} is set on any entity and ProtocolLib is enabled, returns whether
          * the NPC should be considered sneaking or not to the viewing player. Presently called only when player first
          * sees the NPC (i.e. not proactively).Note: this should be async-safe. This method is fragile and may be moved
          * elsewhere.
@@ -628,7 +636,7 @@ public class HologramTrait extends Trait {
         }
 
         /**
-         * If {@link NPC.Metadata.HOLOGRAM_RENDERER} is set on any entity, called when it is seen for the first time by
+         * If {@link NPC.Metadata#HOLOGRAM_RENDERER} is set on any entity, called when it is seen for the first time by
          * a Player.
          *
          * @param hologram
@@ -878,7 +886,7 @@ public class HologramTrait extends Trait {
         }
 
         /**
-         * Hologram spawning is delegated to {@link #createNPC(Entity, String, Vector3d)}
+         * Hologram spawning is delegated to {@link #createNPC(NPC, String, Vector3d)}
          */
         protected abstract void render0(NPC npc, Vector3d offset);
 

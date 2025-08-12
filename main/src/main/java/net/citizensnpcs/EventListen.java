@@ -61,7 +61,6 @@ import org.bukkit.event.world.ChunkLoadEvent;
 import org.bukkit.event.world.ChunkUnloadEvent;
 import org.bukkit.event.world.EntitiesLoadEvent;
 import org.bukkit.event.world.EntitiesUnloadEvent;
-import org.bukkit.event.world.WorldLoadEvent;
 import org.bukkit.event.world.WorldUnloadEvent;
 import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.RegisteredListener;
@@ -262,9 +261,6 @@ public class EventListen implements Listener {
     void loadNPCs(ChunkEvent event) {
         ChunkCoord coord = new ChunkCoord(event.getChunk());
         Runnable runnable = () -> respawnAllFromCoord(coord, event);
-        if (Messaging.isDebugging() && Setting.DEBUG_CHUNK_LOADS.asBoolean() && toRespawn.containsKey(coord)) {
-            new Exception("CITIZENS CHUNK LOAD DEBUG " + coord).printStackTrace();
-        }
         if (event instanceof Cancellable) {
             runnable.run();
         } else {
@@ -500,16 +496,6 @@ public class EventListen implements Listener {
         skinUpdateTracker.onNPCNavigationComplete(event.getNPC());
     }
 
-    @EventHandler
-    public void onNeedsRespawn(NPCNeedsRespawnEvent event) {
-        ChunkCoord coord = new ChunkCoord(event.getSpawnLocation());
-        if (toRespawn.containsEntry(coord, event.getNPC()))
-            return;
-
-        Messaging.debug("Stored", event.getNPC(), "for respawn from NPCNeedsRespawnEvent");
-        toRespawn.put(coord, event.getNPC());
-    }
-
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onNPCDespawn(NPCDespawnEvent event) {
         if (event.getReason() == DespawnReason.PLUGIN || event.getReason() == DespawnReason.REMOVAL
@@ -549,6 +535,16 @@ public class EventListen implements Listener {
             HologramRenderer hr = npc.data().get(NPC.Metadata.HOLOGRAM_RENDERER);
             Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> hr.onSeenByPlayer(npc, event.getPlayer()), 2);
         }
+    }
+
+    @EventHandler
+    public void onNPCNeedsRespawn(NPCNeedsRespawnEvent event) {
+        ChunkCoord coord = event.getSpawnLocation();
+        if (toRespawn.containsEntry(coord, event.getNPC()))
+            return;
+
+        Messaging.debug("Stored", event.getNPC(), "for respawn from NPCNeedsRespawnEvent");
+        toRespawn.put(coord, event.getNPC());
     }
 
     private void onNPCPlayerLinkToPlayer(NPCLinkToPlayerEvent event) {
@@ -857,26 +853,15 @@ public class EventListen implements Listener {
         }
     }
 
-    @EventHandler(ignoreCancelled = true)
-    public void onWorldLoad(WorldLoadEvent event) {
-        for (ChunkCoord chunk : toRespawn.keySet()) {
-            if (!chunk.worldUUID.equals(event.getWorld().getUID())
-                    || !event.getWorld().isChunkLoaded(chunk.x, chunk.z)) {
-                continue;
-            }
-            respawnAllFromCoord(chunk, event);
-        }
-    }
-
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onWorldUnload(WorldUnloadEvent event) {
         for (NPC npc : getAllNPCs()) {
-            if (npc == null || !npc.isSpawned() || !npc.getEntity().getWorld().equals(event.getWorld())) {
+            if (npc == null || !npc.isSpawned() || !npc.getEntity().getWorld().equals(event.getWorld()))
                 continue;
-            }
+
             boolean despawned = npc.despawn(DespawnReason.WORLD_UNLOAD);
             if (event.isCancelled() || !despawned) {
-                for (ChunkCoord coord : toRespawn.keySet()) {
+                for (ChunkCoord coord : Lists.newArrayList(toRespawn.keySet())) {
                     if (event.getWorld().getUID().equals(coord.worldUUID)) {
                         respawnAllFromCoord(coord, event);
                     }
@@ -1052,9 +1037,6 @@ public class EventListen implements Listener {
             }
             toRespawn.put(coord, npc);
             Messaging.idebug(() -> Joiner.on(' ').join("Despawned", npc, "due to chunk unload at", coord));
-        }
-        if (Messaging.isDebugging() && Setting.DEBUG_CHUNK_LOADS.asBoolean()) {
-            new Exception("CITIZENS CHUNK UNLOAD DEBUG " + coord).printStackTrace();
         }
         if (loadChunk) {
             Messaging.idebug(() -> Joiner.on(' ').join("Loading chunk in 10 ticks due to forced chunk load at", coord));

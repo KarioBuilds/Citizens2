@@ -52,6 +52,7 @@ import net.citizensnpcs.trait.AttributeTrait;
 import net.citizensnpcs.trait.CurrentLocation;
 import net.citizensnpcs.trait.Gravity;
 import net.citizensnpcs.trait.HologramTrait;
+import net.citizensnpcs.trait.HologramTrait.HologramRenderer;
 import net.citizensnpcs.trait.PacketNPC;
 import net.citizensnpcs.trait.ScoreboardTrait;
 import net.citizensnpcs.trait.SitTrait;
@@ -109,9 +110,6 @@ public class CitizensNPC extends AbstractNPC {
         }
         Messaging.debug("Despawned", this, "DespawnReason." + reason);
 
-        if (getEntity() instanceof SkinnableEntity) {
-            ((SkinnableEntity) getEntity()).getSkinTracker().onRemoveNPC();
-        }
         if (reason == DespawnReason.DEATH) {
             entityController.die();
         } else {
@@ -180,12 +178,12 @@ public class CitizensNPC extends AbstractNPC {
     public void load(DataKey root) {
         super.load(root);
 
-        CurrentLocation spawnLocation = getOrAddTrait(CurrentLocation.class);
         if (getOrAddTrait(Spawned.class).shouldSpawn()) {
-            if (spawnLocation.getLocation() != null) {
-                spawn(spawnLocation.getLocation(), SpawnReason.RESPAWN);
-            } else {
-                Messaging.debug("Tried to spawn", this, "on load but world was null");
+            CurrentLocation current = getOrAddTrait(CurrentLocation.class);
+            if (current.getLocation() != null) {
+                spawn(current.getLocation(), SpawnReason.RESPAWN);
+            } else if (current.getChunkCoord() != null) {
+                Bukkit.getPluginManager().callEvent(new NPCNeedsRespawnEvent(this, current.getChunkCoord()));
             }
         }
         navigator.load(root.getRelative("navigator"));
@@ -272,8 +270,11 @@ public class CitizensNPC extends AbstractNPC {
     @Override
     protected void setNameInternal(String name) {
         super.setNameInternal(name);
-        if (requiresNameHologram() && !hasTrait(HologramTrait.class)) {
-            addTrait(HologramTrait.class);
+        if (requiresNameHologram()) {
+            HologramRenderer hr = getOrAddTrait(HologramTrait.class).getNameRenderer();
+            if (hr != null) {
+                hr.updateText(this, getRawName());
+            }
         }
         updateCustomName();
     }
