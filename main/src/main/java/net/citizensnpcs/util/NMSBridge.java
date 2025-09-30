@@ -46,7 +46,7 @@ import net.citizensnpcs.trait.MirrorTrait;
 import net.citizensnpcs.trait.versioned.ArmadilloTrait.ArmadilloState;
 import net.citizensnpcs.trait.versioned.CamelTrait.CamelPose;
 import net.citizensnpcs.trait.versioned.SnifferTrait.SnifferState;
-import net.citizensnpcs.util.EntityPacketTracker.PacketAggregator;
+import net.citizensnpcs.util.EntityPacketTracker.PacketBundler;
 import net.citizensnpcs.util.NMS.MinecraftNavigationType;
 
 public interface NMSBridge {
@@ -67,7 +67,7 @@ public interface NMSBridge {
         return packets;
     }
 
-    public EntityPacketTracker createPacketTracker(Entity entity, PacketAggregator agg);
+    public EntityPacketTracker createPacketTracker(Entity entity, PacketBundler bundler);
 
     public GameProfile fillProfileProperties(GameProfile profile, boolean requireSecure) throws Throwable;
 
@@ -195,9 +195,11 @@ public interface NMSBridge {
 
     public void replaceTrackerEntry(Entity entity);
 
+    public void sendCameraPacket(Player player, Entity entity);
+
     public void sendComponent(Player player, Object component);
 
-    public void sendPositionUpdate(Entity from, Collection<Player> to, boolean position, Float bodyYaw, Float pitch,
+    public void sendPositionUpdate(Entity from, Iterable<Player> to, boolean position, Float bodyYaw, Float pitch,
             Float headYaw);
 
     public boolean sendTabListAdd(Player recipient, Player listPlayer);

@@ -1,6 +1,5 @@
 package net.citizensnpcs.trait;
 
-import java.util.HashSet;
 import java.util.Set;
 
 import org.bukkit.Bukkit;
@@ -24,6 +23,7 @@ import net.citizensnpcs.api.npc.NPC;
 import net.citizensnpcs.api.persistence.Persist;
 import net.citizensnpcs.api.trait.Trait;
 import net.citizensnpcs.api.trait.TraitName;
+import net.citizensnpcs.api.util.DataKey;
 import net.citizensnpcs.api.util.SpigotUtil;
 import net.citizensnpcs.util.NMS;
 import net.citizensnpcs.util.Util;
@@ -37,7 +37,7 @@ public class ScoreboardTrait extends Trait {
     private final PerPlayerMetadata<Boolean> metadata;
     private ChatColor previousGlowingColor;
     @Persist
-    private Set<String> tags = new HashSet<>();
+    private Set<String> tags = Sets.newHashSet("CITIZENS_NPC");
 
     public ScoreboardTrait() {
         super("scoreboardtrait");
@@ -92,6 +92,13 @@ public class ScoreboardTrait extends Trait {
     }
 
     @Override
+    public void load(DataKey key) {
+        if (color != null && color.isFormat()) {
+            color = null;
+        }
+    }
+
+    @Override
     public void onDespawn(DespawnReason reason) {
         previousGlowingColor = null;
         String name = lastName;
@@ -142,13 +149,14 @@ public class ScoreboardTrait extends Trait {
     public void onSpawn() {
         changed = true;
         if (SUPPORT_TAGS) {
-            tags.add("CITIZENS_NPC");
             npc.getEntity().getScoreboardTags().clear();
             npc.getEntity().getScoreboardTags().addAll(tags);
         }
     }
 
     public void setColor(ChatColor color) {
+        if (color.isFormat())
+            throw new IllegalArgumentException();
         this.color = color;
     }
 

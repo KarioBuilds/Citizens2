@@ -73,6 +73,8 @@ public class ProtocolLibListener implements Listener {
             private EquipmentSlot convert(ItemSlot slot) {
                 if (slot.name().equals("BODY"))
                     return EquipmentSlot.BODY;
+                if (slot.name().equals("SADDLE"))
+                    return EquipmentSlot.SADDLE;
                 switch (slot) {
                     case CHEST:
                         return EquipmentSlot.CHESTPLATE;
@@ -144,7 +146,6 @@ public class ProtocolLibListener implements Listener {
             }
         });
         manager.addPacketListener(new PacketAdapter(plugin, ListenerPriority.HIGHEST, Server.ENTITY_METADATA) {
-
             @Override
             public void onPacketSending(PacketEvent event) {
                 NPC npc = getNPCFromPacket(event);
@@ -317,8 +318,7 @@ public class ProtocolLibListener implements Listener {
                         degToByte(session.getHeadYaw()), session.getPitch(), type);
                 if (type == Server.ENTITY_HEAD_ROTATION) {
                     packet.getBytes().write(0, degToByte(session.getHeadYaw()));
-                } else if (type == Server.ENTITY_LOOK || type == Server.ENTITY_MOVE_LOOK
-                        || type == Server.REL_ENTITY_MOVE_LOOK) {
+                } else if (type == Server.ENTITY_LOOK || type == Server.REL_ENTITY_MOVE_LOOK) {
                     packet.getBytes().write(0, degToByte(session.getBodyYaw()));
                     packet.getBytes().write(1, degToByte(session.getPitch()));
                 } else if (type == Server.ENTITY_TELEPORT) {

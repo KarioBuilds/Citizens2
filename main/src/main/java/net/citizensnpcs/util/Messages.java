@@ -82,10 +82,10 @@ public class Messages {
     public static final String COMMANDS_CLEARED = "citizens.commands.npc.command.cleared";
     public static final String COMMANDS_CYCLE_SET = "citizens.commands.npc.command.cycle-set";
     public static final String COMMANDS_CYCLE_UNSET = "citizens.commands.npc.command.cycle-unset";
-    public static final String COMMANDS_PERSIST_SEQUENCE_SET = "citizens.commands.npc.command.persist-sequence-set";
-    public static final String COMMANDS_PERSIST_SEQUENCE_UNSET = "citizens.commands.npc.command.persist-sequence-unset";
     public static final String COMMANDS_RANDOM_SET = "citizens.commands.npc.commands.random-set";
     public static final String COMMANDS_RANDOM_UNSET = "citizens.commands.npc.commands.random-unset";
+    public static final String COMMANDS_REMEMBER_LAST_USED_SET = "citizens.commands.npc.command.remember-last-used-set";
+    public static final String COMMANDS_REMEMBER_LAST_USED_UNSET = "citizens.commands.npc.command.remember-last-used-unset";
     public static final String COMMANDS_SEQUENTIAL_SET = "citizens.commands.npc.commands.sequential-set";
     public static final String COMMANDS_SEQUENTIAL_UNSET = "citizens.commands.npc.commands.sequential-unset";
     public static final String CONTRIBUTE_TO_TRANSLATION_PROMPT = "citizens.contribute-to-translations-prompt";
@@ -95,7 +95,7 @@ public class Messages {
     public static final String COPIER_EDITOR_BEGIN = "citizens.editors.copier.begin";
     public static final String COPIER_EDITOR_END = "citizens.editors.copier.end";
     public static final String COSMETIC_EQUIPMENT_SET = "citizens.commands.npc.setequipment.cosmetic-set";
-    public static final String CURRENT_WAYPOINT_PROVIDER = "citizens.waypoints.current-provider";
+    public static final String CURRENT_WAYPOINT_PROVIDER = "citizens.commands.waypoints.current-provider";
     public static final String DEFAULT_POSE_SET = "citizens.commands.npc.pose.default-pose-set";
     public static final String DELAY_TRIGGER_PROMPT = "citizens.editors.waypoints.triggers.delay.prompt";
     public static final String DESELECTED_NPC = "citizens.commands.npc.deselect";
@@ -475,6 +475,8 @@ public class Messages {
     public static final String VILLAGER_TYPE_SET = "citizens.commands.npc.villager.type-set";
     public static final String VULNERABLE_SET = "citizens.commands.npc.vulnerable.set";
     public static final String VULNERABLE_STOPPED = "citizens.commands.npc.vulnerable.stopped";
+    public static final String WANDER_DELAY_SET = "citizens.commands.npc.wander.delay-set";
+    public static final String WANDER_PATHFIND_SET = "citizens.commands.npc.wander.pathfind-set";
     public static final String WANDER_WAYPOINTS_ADDED_REGION = "citizens.editors.waypoints.wander.added-region";
     public static final String WANDER_WAYPOINTS_BEGIN = "citizens.editors.waypoints.wander.begin";
     public static final String WANDER_WAYPOINTS_DELAY_SET = "citizens.editors.waypoints.wander.delay-set";
@@ -486,13 +488,15 @@ public class Messages {
     public static final String WANDER_WAYPOINTS_REMOVED_REGION = "citizens.editors.waypoints.wander.removed-region";
     public static final String WANDER_WAYPOINTS_WORLDGUARD_REGION_NOT_FOUND = "citizens.editors.waypoints.wander.worldguard-region-not-found";
     public static final String WANDER_WAYPOINTS_WORLDGUARD_REGION_SET = "citizens.editors.waypoints.wander.worldguard-region-set";
+    public static final String WANDER_WORLDGUARD_REGION_SET = "citizens.commands.npc.wander.worldguard-region-set";
+    public static final String WANDER_XY_RANGE_SET = "citizens.commands.npc.wander.xyrange-set";
     public static final String WARDEN_ANGER_ADDED = "citizens.commands.npc.warden.anger-added";
     public static final String WARDEN_POSE_SET = "citizens.commands.npc.warden.pose-set";
     public static final String WAYPOINT_ADDED = "citizens.commands.waypoints.add.waypoint-added";
     public static final String WAYPOINT_EDITOR_NOT_SHOWING_MARKERS = "citizens.editors.waypoints.linear.not-showing-markers";
     public static final String WAYPOINT_EDITOR_SELECTED_WAYPOINT = "citizens.editors.waypoints.linear.selected-waypoint";
     public static final String WAYPOINT_EDITOR_SHOWING_MARKERS = "citizens.editors.waypoints.linear.showing-markers";
-    public static final String WAYPOINT_PROVIDER_SET = "citizens.waypoints.set-provider";
+    public static final String WAYPOINT_PROVIDER_SET = "citizens.commands.waypoints.set-provider";
     public static final String WAYPOINT_REMOVED = "citizens.commands.waypoints.waypoint-removed";
     public static final String WAYPOINT_TELEPORTING_DISABLED = "citizens.commands.waypoints.disableteleporting.disabled";
     public static final String WAYPOINT_TELEPORTING_ENABLED = "citizens.commands.waypoints.disableteleporting.enabled";

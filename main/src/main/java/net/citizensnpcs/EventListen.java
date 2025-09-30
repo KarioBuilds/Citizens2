@@ -553,8 +553,7 @@ public class EventListen implements Listener {
                 Setting.RESET_YAW_ON_SPAWN.asBoolean());
         boolean sendTabRemove = NMS.sendTabListAdd(event.getPlayer(), (Player) tracker);
         if (!sendTabRemove || !event.getNPC().shouldRemoveFromTabList()) {
-            NMS.sendPositionUpdate(tracker, ImmutableList.of(event.getPlayer()), false, null, null,
-                    NMS.getHeadYaw(tracker));
+            NMS.sendRotationPacket(tracker, ImmutableList.of(event.getPlayer()), null, null, NMS.getHeadYaw(tracker));
             if (resetYaw) {
                 Bukkit.getScheduler().scheduleSyncDelayedTask(plugin,
                         () -> PlayerAnimation.ARM_SWING.play((Player) tracker, event.getPlayer()));
@@ -566,8 +565,7 @@ public class EventListen implements Listener {
                 return;
 
             NMS.sendTabListRemove(event.getPlayer(), (Player) tracker);
-            NMS.sendPositionUpdate(tracker, ImmutableList.of(event.getPlayer()), false, null, null,
-                    NMS.getHeadYaw(tracker));
+            NMS.sendRotationPacket(tracker, ImmutableList.of(event.getPlayer()), null, null, NMS.getHeadYaw(tracker));
             if (resetYaw) {
                 PlayerAnimation.ARM_SWING.play((Player) tracker, event.getPlayer());
             }
@@ -1020,6 +1018,9 @@ public class EventListen implements Listener {
     private void unloadNPCs(ChunkEvent event, List<NPC> toDespawn) {
         ChunkCoord coord = new ChunkCoord(event.getChunk());
         boolean loadChunk = false;
+        if (toDespawn.size() > 0) {
+            Messaging.idebug(() -> Joiner.on(' ').join("Despawning all NPCs at", coord, "due to", event, "at", coord));
+        }
         for (NPC npc : toDespawn) {
             if (toRespawn.containsValue(npc))
                 continue;

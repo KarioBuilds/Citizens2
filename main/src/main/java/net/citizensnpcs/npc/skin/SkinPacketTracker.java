@@ -65,7 +65,7 @@ public class SkinPacketTracker {
                 updateNearbyViewers(entity.getNPC().data().get(NPC.Metadata.TRACKING_RANGE,
                         Setting.NPC_SKIN_VIEW_DISTANCE.asInt()));
             }
-        }.runTaskLater(CitizensAPI.getPlugin(), 15);
+        }.runTaskLater(CitizensAPI.getPlugin(), 10);
     }
 
     /**
@@ -97,7 +97,7 @@ public class SkinPacketTracker {
             return;
 
         skin.apply(entity);
-        if (NMS.sendTabListAdd(player, entity.getBukkitEntity())) {
+        if (NMS.sendTabListAdd(player, entity.getBukkitEntity()) && entity.getNPC().shouldRemoveFromTabList()) {
             Bukkit.getScheduler().scheduleSyncDelayedTask(CitizensAPI.getPlugin(),
                     () -> NMS.sendTabListRemove(player, entity.getBukkitEntity()),
                     Setting.TABLIST_REMOVE_PACKET_DELAY.asTicks());

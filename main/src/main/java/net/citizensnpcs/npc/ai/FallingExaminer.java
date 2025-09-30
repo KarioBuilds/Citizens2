@@ -10,7 +10,6 @@ import net.citizensnpcs.api.astar.pathfinder.BlockExaminer;
 import net.citizensnpcs.api.astar.pathfinder.BlockSource;
 import net.citizensnpcs.api.astar.pathfinder.MinecraftBlockExaminer;
 import net.citizensnpcs.api.astar.pathfinder.PathPoint;
-import net.citizensnpcs.api.util.SpigotUtil;
 
 public class FallingExaminer implements BlockExaminer {
     private final Map<PathPoint, Integer> fall = Maps.newHashMap();
@@ -29,15 +28,16 @@ public class FallingExaminer implements BlockExaminer {
     @Override
     public PassableState isPassable(BlockSource source, PathPoint point) {
         Vector pos = point.getVector();
-        if (!SpigotUtil.checkYSafe(pos.getBlockY() - 1, source.getWorld()))
+        if (!source.isYWithinBounds(pos.getBlockY() - 1))
             return PassableState.IGNORE;
 
         if (fall.containsKey(point))
             return PassableState.PASSABLE;
 
         Vector ppos = point.getParentPoint().getVector();
-        if (!MinecraftBlockExaminer
-                .canStandOn(source.getBlockAt(pos.getBlockX(), pos.getBlockY() - 1, pos.getBlockZ()))) {
+        if (!MinecraftBlockExaminer.canStandOn(
+                source.getMaterialAt(pos.getBlockX(), pos.getBlockY() - 1, pos.getBlockZ()),
+                source.getBlockDataAt(pos.getBlockX(), pos.getBlockY(), pos.getBlockZ()))) {
             Integer dist = fall.get(point.getParentPoint());
             if (dist == null && mc.isPassable(source, point.getParentPoint()) == PassableState.PASSABLE) {
                 // start a fall
@@ -45,7 +45,7 @@ public class FallingExaminer implements BlockExaminer {
                 return PassableState.PASSABLE;
             } else if (dist != null && dist < maxFallDistance && pos.getBlockY() < ppos.getBlockY()
                     && pos.getBlockX() == ppos.getBlockX() && pos.getBlockZ() == ppos.getBlockZ()
-                    && MinecraftBlockExaminer.canStandIn(source.getBlockAt(pos))) {
+                    && MinecraftBlockExaminer.canStandIn(source.getMaterialAt(pos), source.getBlockDataAt(ppos))) {
                 fall.put(point, dist + 1);
                 return PassableState.PASSABLE;
             }

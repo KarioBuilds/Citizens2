@@ -19,6 +19,7 @@ import net.citizensnpcs.api.ai.NavigatorParameters;
 import net.citizensnpcs.api.ai.TargetType;
 import net.citizensnpcs.api.ai.event.CancelReason;
 import net.citizensnpcs.api.astar.AStarMachine;
+import net.citizensnpcs.api.astar.AStarMachine.AStarState;
 import net.citizensnpcs.api.astar.pathfinder.BlockExaminer;
 import net.citizensnpcs.api.astar.pathfinder.FlyingBlockExaminer;
 import net.citizensnpcs.api.astar.pathfinder.MinecraftBlockExaminer;
@@ -37,7 +38,7 @@ public class FlyingAStarNavigationStrategy extends AbstractPathStrategy {
     private final NavigatorParameters parameters;
     private Path plan;
     private boolean planned;
-    private AStarMachine<VectorNode, Path>.AStarState state;
+    private AStarState<VectorNode> state;
     private final Location target;
     private Vector vector;
 
@@ -85,8 +86,8 @@ public class FlyingAStarNavigationStrategy extends AbstractPathStrategy {
         }
         Location location = npc.getEntity().getLocation();
         VectorGoal goal = new VectorGoal(target, (float) parameters.pathDistanceMargin());
-        state = ASTAR.getStateFor(goal, new VectorNode(goal, location,
-                new NMSChunkBlockSource(location, parameters.range()), parameters.examiners()));
+        state = ASTAR.getStateFor(goal,
+                new VectorNode(goal, location, new NMSChunkBlockSource(location, parameters.range()), parameters));
     }
 
     public void setPlan(Path path) {
@@ -117,8 +118,8 @@ public class FlyingAStarNavigationStrategy extends AbstractPathStrategy {
             if (state == null) {
                 initialisePathfinder();
             }
-            int maxIterations = Setting.MAXIMUM_ASTAR_ITERATIONS.asInt();
-            int iterationsPerTick = Setting.ASTAR_ITERATIONS_PER_TICK.asInt();
+            int maxIterations = Setting.CITIZENS_PATHFINDER_MAXIMUM_ASTAR_ITERATIONS.asInt();
+            int iterationsPerTick = Setting.CITIZENS_PATHFINDER_ASTAR_ITERATIONS_PER_TICK.asInt();
             Path plan = ASTAR.run(state, iterationsPerTick);
             if (plan == null) {
                 if (state.isEmpty()) {
