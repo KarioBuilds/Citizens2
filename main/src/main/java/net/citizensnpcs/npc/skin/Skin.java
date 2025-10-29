@@ -25,6 +25,7 @@ import net.citizensnpcs.api.npc.NPC;
 import net.citizensnpcs.api.util.Messaging;
 import net.citizensnpcs.npc.skin.profile.ProfileFetcher;
 import net.citizensnpcs.trait.SkinTrait;
+import net.citizensnpcs.util.GameProfileWrapper;
 import net.citizensnpcs.util.SkinProperty;
 
 /**
@@ -250,11 +251,12 @@ public class Skin {
             isValid = false;
             return;
         }
-        if (!profile.getName().toLowerCase(Locale.ROOT).equals(skinName)) {
-            Messaging.debug("GameProfile name (" + profile.getName() + ") and " + "skin name (" + skinName
+        GameProfileWrapper gpw = GameProfileWrapper.fromMojangProfile(profile);
+        if (!gpw.name.toLowerCase(Locale.ROOT).equals(skinName)) {
+            Messaging.debug("GameProfile name (" + gpw.name + ") and " + "skin name (" + skinName
                     + ") do not match. Has the user renamed recently?");
         }
-        skinId = profile.getId();
+        skinId = gpw.uuid;
         skinData = SkinProperty.fromMojangProfile(profile);
 
         List<SkinnableEntity> entities = new ArrayList<>(pending.keySet());
@@ -338,6 +340,12 @@ public class Skin {
         return skin;
     }
 
+    public static boolean hasSkin(String name) {
+        synchronized (CACHE) {
+            return CACHE.containsKey(name);
+        }
+    }
+
     private static void setNPCSkinData(SkinnableEntity entity, String skinName, UUID skinId,
             SkinProperty skinProperty) {
         NPC npc = entity.getNPC();
@@ -347,7 +355,8 @@ public class Skin {
         npc.data().setPersistent(CACHED_SKIN_UUID_NAME_METADATA, skinName);
         npc.data().setPersistent(CACHED_SKIN_UUID_METADATA, skinId.toString());
         if (skinProperty.value != null) {
-            skinTrait.setTexture(skinProperty.value, skinProperty.signature == null ? "" : skinProperty.signature);
+            skinTrait.applyTextureInternal(skinProperty.signature == null ? "" : skinProperty.signature,
+                    skinProperty.value);
             setNPCTexture(entity, skinProperty);
         } else {
             skinTrait.clearTexture();
@@ -355,7 +364,7 @@ public class Skin {
     }
 
     private static void setNPCTexture(SkinnableEntity entity, SkinProperty skinProperty) {
-        GameProfile profile = entity.getProfile();
+        GameProfile profile = entity.gameProfile();
 
         // don't set property if already set since this sometimes causes packet errors that disconnect the client.
         SkinProperty current = SkinProperty.fromMojangProfile(profile);
@@ -363,7 +372,7 @@ public class Skin {
                 && current.signature.equals(skinProperty.signature))
             return;
 
-        skinProperty.apply(profile);
+        entity.applyTexture(skinProperty);
     }
 
     private static final Map<String, Skin> CACHE = new HashMap<>(20);

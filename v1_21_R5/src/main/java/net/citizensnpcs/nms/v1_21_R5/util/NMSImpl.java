@@ -62,7 +62,6 @@ import com.mojang.authlib.GameProfileRepository;
 import com.mojang.authlib.HttpAuthenticationService;
 import com.mojang.authlib.minecraft.MinecraftSessionService;
 import com.mojang.authlib.minecraft.client.MinecraftClient;
-import com.mojang.authlib.properties.Property;
 import com.mojang.authlib.yggdrasil.YggdrasilMinecraftSessionService;
 import com.mojang.authlib.yggdrasil.response.MinecraftProfilePropertiesResponse;
 import com.mojang.util.UndashedUuid;
@@ -225,7 +224,6 @@ import net.citizensnpcs.npc.ai.MCNavigationStrategy.MCNavigator;
 import net.citizensnpcs.npc.ai.MCTargetStrategy.TargetNavigator;
 import net.citizensnpcs.npc.ai.NPCHolder;
 import net.citizensnpcs.trait.EntityPoseTrait.EntityPose;
-import net.citizensnpcs.trait.MirrorTrait;
 import net.citizensnpcs.trait.RotationTrait;
 import net.citizensnpcs.trait.versioned.AllayTrait;
 import net.citizensnpcs.trait.versioned.AreaEffectCloudTrait;
@@ -1255,62 +1253,6 @@ public class NMSImpl implements NMSBridge {
     }
 
     @Override
-    public void onPlayerInfoAdd(Player player, Object raw, Function<UUID, MirrorTrait> mirrorTraits) {
-        ClientboundPlayerInfoUpdatePacket packet = (ClientboundPlayerInfoUpdatePacket) raw;
-        List<ClientboundPlayerInfoUpdatePacket.Entry> list = Lists.newArrayList(packet.entries());
-        boolean changed = false;
-        GameProfile playerProfile = null;
-        for (int i = 0; i < list.size(); i++) {
-            ClientboundPlayerInfoUpdatePacket.Entry npcInfo = list.get(i);
-            if (npcInfo == null) {
-                continue;
-            }
-            MirrorTrait trait = mirrorTraits.apply(npcInfo.profileId());
-            if (trait == null || !trait.isMirroring(player)) {
-                continue;
-            }
-            boolean disableTablist = trait.getNPC().shouldRemoveFromTabList();
-
-            if (disableTablist != npcInfo.listed()) {
-                list.set(i,
-                        new ClientboundPlayerInfoUpdatePacket.Entry(npcInfo.profileId(), npcInfo.profile(),
-                                !disableTablist, npcInfo.latency(), npcInfo.gameMode(),
-                                !disableTablist ? npcInfo.displayName() : Component.empty(), npcInfo.showHat(),
-                                npcInfo.listOrder(), npcInfo.chatSession()));
-                changed = true;
-            }
-            if (playerProfile == null) {
-                playerProfile = NMS.getProfile(player);
-            }
-            if (trait.mirrorName()) {
-                list.set(i, new ClientboundPlayerInfoUpdatePacket.Entry(npcInfo.profileId(), playerProfile,
-                        !disableTablist, npcInfo.latency(), npcInfo.gameMode(),
-                        Component.literal(
-                                Util.possiblyStripBedrockPrefix(playerProfile.getName(), playerProfile.getId())),
-                        npcInfo.showHat(), npcInfo.listOrder(), npcInfo.chatSession()));
-                changed = true;
-                continue;
-            }
-            Collection<Property> textures = playerProfile.getProperties().get("textures");
-            if (textures == null || textures.size() == 0) {
-                continue;
-            }
-            npcInfo.profile().getProperties().clear();
-            for (String key : playerProfile.getProperties().keySet()) {
-                npcInfo.profile().getProperties().putAll(key, playerProfile.getProperties().get(key));
-            }
-            changed = true;
-        }
-        if (changed) {
-            try {
-                PLAYER_INFO_ENTRIES_LIST.invoke(packet, list);
-            } catch (Throwable e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
-    @Override
     public InventoryView openAnvilInventory(Player player, Inventory anvil, String title) {
         ServerPlayer handle = (ServerPlayer) getHandle(player);
         CitizensAnvilMenu container = new CitizensAnvilMenu(handle.nextContainerCounter(), handle.getInventory(),
@@ -1623,12 +1565,6 @@ public class NMSImpl implements NMSBridge {
         if (!(entity instanceof org.bukkit.entity.LivingEntity))
             return;
         ((LivingEntity) getHandle(entity)).setYHeadRot(Util.clamp(yaw));
-    }
-
-    @Override
-    public void setKnockbackResistance(org.bukkit.entity.LivingEntity entity, double d) {
-        LivingEntity handle = getHandle(entity);
-        handle.getAttribute(Attributes.KNOCKBACK_RESISTANCE).setBaseValue(d);
     }
 
     @Override
@@ -2752,6 +2688,7 @@ public class NMSImpl implements NMSBridge {
     }
 
     private static final MethodHandle ARMADILLO_SCUTE_TIME = NMS.getSetter(Armadillo.class, "cv");
+
     private static final MethodHandle ATTRIBUTE_PROVIDER_MAP = NMS.getFirstGetter(AttributeSupplier.class, Map.class);
     private static final MethodHandle ATTRIBUTE_PROVIDER_MAP_SETTER = NMS.getFirstFinalSetter(AttributeSupplier.class,
             Map.class);

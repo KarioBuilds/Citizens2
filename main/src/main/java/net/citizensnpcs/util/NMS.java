@@ -9,7 +9,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -63,12 +62,12 @@ import net.citizensnpcs.api.npc.NPC;
 import net.citizensnpcs.api.util.BoundingBox;
 import net.citizensnpcs.api.util.EntityDim;
 import net.citizensnpcs.api.util.Messaging;
+import net.citizensnpcs.api.util.SpigotUtil;
 import net.citizensnpcs.api.util.SpigotUtil.InventoryViewAPI;
 import net.citizensnpcs.npc.ai.MCNavigationStrategy.MCNavigator;
 import net.citizensnpcs.npc.ai.MCTargetStrategy.TargetNavigator;
 import net.citizensnpcs.npc.ai.NPCHolder;
 import net.citizensnpcs.trait.EntityPoseTrait.EntityPose;
-import net.citizensnpcs.trait.MirrorTrait;
 import net.citizensnpcs.trait.PacketNPC;
 import net.citizensnpcs.trait.versioned.ArmadilloTrait.ArmadilloState;
 import net.citizensnpcs.trait.versioned.CamelTrait.CamelPose;
@@ -728,12 +727,59 @@ public class NMS {
         BRIDGE.load(commands);
     }
 
-    public static void loadBridge(String rev) throws Exception {
+    public static void loadBridge() throws Exception {
+        int[] version = SpigotUtil.getVersion();
+        String rev = null;
+        switch (version[1]) {
+            case 8:
+                rev = "v1_8_R3";
+                break;
+            case 10:
+                rev = "v1_10_R1";
+                break;
+            case 11:
+                rev = "v1_11_R1";
+                break;
+            case 12:
+                rev = "v1_12_R1";
+                break;
+            case 13:
+                rev = "v1_13_R2";
+                break;
+            case 14:
+                rev = "v1_14_R1";
+                break;
+            case 15:
+                rev = "v1_15_R1";
+                break;
+            case 16:
+                rev = "v1_16_R3";
+                break;
+            case 17:
+                rev = "v1_17_R1";
+                break;
+            case 18:
+                rev = "v1_18_R2";
+                break;
+            case 19:
+                rev = "v1_19_R3";
+                break;
+            case 20:
+                rev = "v1_20_R4";
+                break;
+            case 21:
+                if (version[2] < 9) {
+                    rev = "v1_21_R5";
+                } else {
+                    rev = "v1_21_R6";
+                }
+                break;
+        }
         Class<?> entity = null;
         try {
-            entity = Class.forName("net.minecraft.server." + rev + ".Entity");
-        } catch (ClassNotFoundException ex) {
             entity = Class.forName("net.minecraft.world.entity.Entity");
+        } catch (ClassNotFoundException ex) {
+            entity = Class.forName("net.minecraft.server." + rev + ".Entity");
         }
         giveReflectiveAccess(entity, NMS.class);
         BRIDGE = (NMSBridge) Class.forName("net.citizensnpcs.nms." + rev + ".util.NMSImpl").getConstructor()
@@ -758,10 +804,6 @@ public class NMS {
 
     public static void mount(org.bukkit.entity.Entity entity, org.bukkit.entity.Entity passenger) {
         BRIDGE.mount(entity, passenger);
-    }
-
-    public static void onPlayerInfoAdd(Player player, Object source, Function<UUID, MirrorTrait> mirrorTraits) {
-        BRIDGE.onPlayerInfoAdd(player, source, mirrorTraits);
     }
 
     public static InventoryView openAnvilInventory(Player player, Inventory inventory, String title) {
@@ -911,6 +953,10 @@ public class NMS {
 
     public static void setLyingDown(Entity cat, boolean lying) {
         BRIDGE.setLyingDown(cat, lying);
+    }
+
+    public static void setMannequinDescription(Entity mannequin, Object component) {
+        BRIDGE.setMannequinDescription(mannequin, component);
     }
 
     public static void setNavigationTarget(org.bukkit.entity.Entity handle, org.bukkit.entity.Entity target,

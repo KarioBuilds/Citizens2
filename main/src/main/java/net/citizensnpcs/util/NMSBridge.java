@@ -3,12 +3,12 @@ package net.citizensnpcs.util;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
-import java.util.function.Function;
 
 import org.bukkit.Location;
 import org.bukkit.Sound;
 import org.bukkit.World;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.block.Block;
 import org.bukkit.command.BlockCommandSender;
 import org.bukkit.entity.Enderman;
@@ -42,7 +42,6 @@ import net.citizensnpcs.api.util.SpigotUtil.InventoryViewAPI;
 import net.citizensnpcs.npc.ai.MCNavigationStrategy.MCNavigator;
 import net.citizensnpcs.npc.ai.MCTargetStrategy.TargetNavigator;
 import net.citizensnpcs.trait.EntityPoseTrait.EntityPose;
-import net.citizensnpcs.trait.MirrorTrait;
 import net.citizensnpcs.trait.versioned.ArmadilloTrait.ArmadilloState;
 import net.citizensnpcs.trait.versioned.CamelTrait.CamelPose;
 import net.citizensnpcs.trait.versioned.SnifferTrait.SnifferState;
@@ -169,9 +168,6 @@ public interface NMSBridge {
 
     public void mount(Entity entity, Entity passenger);
 
-    public default void onPlayerInfoAdd(Player player, Object source, Function<UUID, MirrorTrait> mirrorTraits) {
-    }
-
     public InventoryView openAnvilInventory(Player player, Inventory anvil, String title);
 
     public void openHorseInventory(Tameable horse, Player equipper);
@@ -238,12 +234,20 @@ public interface NMSBridge {
 
     public void setHeadYaw(Entity entity, float yaw);
 
-    public void setKnockbackResistance(LivingEntity entity, double d);
+    public default void setKnockbackResistance(LivingEntity entity, double d) {
+        AttributeInstance ai = entity.getAttribute(Attribute.KNOCKBACK_RESISTANCE);
+        if (ai != null) {
+            ai.setBaseValue(d);
+        }
+    }
 
     public void setLocationDirectly(Entity entity, Location location);
 
     public default void setLyingDown(Entity cat, boolean lying) {
         throw new UnsupportedOperationException();
+    }
+
+    public default void setMannequinDescription(Entity mannequin, Object component) {
     }
 
     public void setNavigationTarget(Entity handle, Entity target, float speed);
