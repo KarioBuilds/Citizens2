@@ -88,12 +88,18 @@ public class NMS {
         BRIDGE.activate(entity);
     }
 
-    public static boolean addEntityToWorld(org.bukkit.entity.Entity entity, SpawnReason custom) {
-        return BRIDGE.addEntityToWorld(entity, custom);
+    public static void addEntityToWorld(org.bukkit.entity.Entity entity, SpawnReason custom,
+            Consumer<Boolean> callback) {
+        BRIDGE.addEntityToWorld(entity, custom, callback);
     }
 
     public static void addOrRemoveFromPlayerList(org.bukkit.entity.Entity entity, boolean remove) {
-        BRIDGE.addOrRemoveFromPlayerList(entity, remove);
+        Location location = entity.getLocation();
+        if (CitizensAPI.getScheduler().isOnOwnerThread(location)) {
+            BRIDGE.addOrRemoveFromPlayerList(entity, remove);
+        } else {
+            CitizensAPI.getScheduler().runRegionTask(location, () -> BRIDGE.addOrRemoveFromPlayerList(entity, remove));
+        }
     }
 
     public static void attack(LivingEntity attacker, LivingEntity bukkitTarget) {
@@ -770,8 +776,10 @@ public class NMS {
             case 21:
                 if (version[2] < 9) {
                     rev = "v1_21_R5";
-                } else {
+                } else if (version[2] < 11) {
                     rev = "v1_21_R6";
+                } else {
+                    rev = "v1_21_R7";
                 }
                 break;
         }
@@ -832,19 +840,37 @@ public class NMS {
     }
 
     public static void remove(Entity entity) {
-        BRIDGE.remove(entity);
+        Location location = entity.getLocation();
+        if (CitizensAPI.getScheduler().isOnOwnerThread(location)) {
+            BRIDGE.remove(entity);
+        } else {
+            CitizensAPI.getScheduler().runRegionTask(location, () -> BRIDGE.remove(entity));
+        }
     }
 
     public static void removeFromServerPlayerList(Player player) {
-        BRIDGE.removeFromServerPlayerList(player);
+        if (CitizensAPI.getScheduler().isOnOwnerThread(player)) {
+            BRIDGE.removeFromServerPlayerList(player);
+        } else {
+            CitizensAPI.getScheduler().runEntityTask(player, () -> BRIDGE.removeFromServerPlayerList(player));
+        }
     }
 
     public static void removeFromWorld(org.bukkit.entity.Entity entity) {
-        BRIDGE.removeFromWorld(entity);
+        Location location = entity.getLocation();
+        if (CitizensAPI.getScheduler().isOnOwnerThread(location)) {
+            BRIDGE.removeFromWorld(entity);
+        } else {
+            CitizensAPI.getScheduler().runRegionTask(location, () -> BRIDGE.removeFromWorld(entity));
+        }
     }
 
     public static void removeHookIfNecessary(FishHook entity) {
-        BRIDGE.removeHookIfNecessary(entity);
+        if (CitizensAPI.getScheduler().isOnOwnerThread(entity)) {
+            BRIDGE.removeHookIfNecessary(entity);
+        } else {
+            CitizensAPI.getScheduler().runEntityTask(entity, () -> BRIDGE.removeHookIfNecessary(entity));
+        }
     }
 
     public static void replaceTracker(Entity entity) {
@@ -879,16 +905,12 @@ public class NMS {
                 bodyYaw, pitch, headYaw);
     }
 
-    public static boolean sendTabListAdd(Player recipient, Player listPlayer) {
-        return BRIDGE.sendTabListAdd(recipient, listPlayer);
+    public static boolean sendTabListAdd(Player to, Player listPlayer) {
+        return BRIDGE.sendTabListAdd(to, listPlayer);
     }
 
-    public static void sendTabListRemove(Player recipient, Collection<Player> players) {
-        BRIDGE.sendTabListRemove(recipient, players);
-    }
-
-    public static void sendTabListRemove(Player recipient, Player listPlayer) {
-        sendTabListRemove(recipient, ImmutableList.of(listPlayer));
+    public static void sendTabListRemove(Player to, Player listPlayer) {
+        BRIDGE.sendTabListRemove(to, ImmutableList.of(listPlayer));
     }
 
     public static void sendTeamPacket(Player recipient, Team team, int mode) {
@@ -1028,7 +1050,11 @@ public class NMS {
     }
 
     public static void setStepHeight(org.bukkit.entity.Entity entity, float height) {
-        BRIDGE.setStepHeight(entity, height);
+        if (CitizensAPI.getScheduler().isOnOwnerThread(entity)) {
+            BRIDGE.setStepHeight(entity, height);
+        } else {
+            CitizensAPI.getScheduler().runEntityTask(entity, () -> BRIDGE.setStepHeight(entity, height));
+        }
     }
 
     public static void setTeamNameTagVisible(Team team, boolean visible) {

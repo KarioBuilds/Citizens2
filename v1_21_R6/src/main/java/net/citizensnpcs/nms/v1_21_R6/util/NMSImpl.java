@@ -85,6 +85,7 @@ import net.citizensnpcs.api.trait.TraitInfo;
 import net.citizensnpcs.api.util.BoundingBox;
 import net.citizensnpcs.api.util.EntityDim;
 import net.citizensnpcs.api.util.Messaging;
+import net.citizensnpcs.api.util.SpigotUtil;
 import net.citizensnpcs.api.util.SpigotUtil.InventoryViewAPI;
 import net.citizensnpcs.nms.v1_21_R6.entity.AllayController;
 import net.citizensnpcs.nms.v1_21_R6.entity.ArmadilloController;
@@ -248,6 +249,7 @@ import net.citizensnpcs.trait.versioned.EnderDragonTrait;
 import net.citizensnpcs.trait.versioned.FoxTrait;
 import net.citizensnpcs.trait.versioned.FrogTrait;
 import net.citizensnpcs.trait.versioned.GoatTrait;
+import net.citizensnpcs.trait.versioned.ItemDisplayTrait;
 import net.citizensnpcs.trait.versioned.LlamaTrait;
 import net.citizensnpcs.trait.versioned.MannequinTrait;
 import net.citizensnpcs.trait.versioned.MushroomCowTrait;
@@ -315,7 +317,6 @@ import net.minecraft.server.dedicated.DedicatedServer;
 import net.minecraft.server.level.ChunkMap;
 import net.minecraft.server.level.ChunkMap.TrackedEntity;
 import net.minecraft.server.level.ServerBossEvent;
-import net.minecraft.server.level.ServerChunkCache;
 import net.minecraft.server.level.ServerEntity;
 import net.minecraft.server.level.ServerEntity.Synchronizer;
 import net.minecraft.server.level.ServerLevel;
@@ -416,20 +417,30 @@ public class NMSImpl implements NMSBridge {
     }
 
     @Override
-    public boolean addEntityToWorld(org.bukkit.entity.Entity entity, SpawnReason custom) {
-        int viewDistance = -1;
-        ChunkMap chunkMap = null;
-
-        if (entity instanceof Player) {
-            chunkMap = ((ServerChunkCache) getHandle(entity).level().getChunkSource()).chunkMap;
-            viewDistance = chunkMap.serverViewDistance;
-            chunkMap.serverViewDistance = -1;
+    public void addEntityToWorld(org.bukkit.entity.Entity entity, SpawnReason custom, Consumer<Boolean> isAdded) {
+        Runnable task = () -> {
+            Entity handle = getHandle(entity);
+            ServerLevel level = (ServerLevel) handle.level();
+            int viewDistance = -1;
+            ChunkMap chunkMap = null;
+            if (entity instanceof Player) {
+                chunkMap = level.getChunkSource().chunkMap;
+                viewDistance = chunkMap.serverViewDistance;
+                chunkMap.serverViewDistance = -1;
+            }
+            boolean success = level.addFreshEntity(handle, custom);
+            if (chunkMap != null) {
+                chunkMap.serverViewDistance = viewDistance;
+            }
+            isAdded.accept(success);
+        };
+        if (SpigotUtil.isFoliaServer()) {
+            final Location location = entity.getLocation();
+            CitizensAPI.getScheduler().runRegionTask(location.getWorld(), location.getBlockX() >> 4,
+                    location.getBlockZ() >> 4, task);
+        } else {
+            task.run();
         }
-        boolean success = getHandle(entity).level().addFreshEntity(getHandle(entity), custom);
-        if (chunkMap != null) {
-            chunkMap.serverViewDistance = viewDistance;
-        }
-        return success;
     }
 
     @Override
@@ -986,7 +997,6 @@ public class NMSImpl implements NMSBridge {
     public boolean isSneaking(org.bukkit.entity.Entity entity) {
         if (entity instanceof Player)
             return ((Player) entity).isSneaking();
-
         return getHandle(entity).getPose() == Pose.CROUCHING;
     }
 
@@ -1022,6 +1032,7 @@ public class NMSImpl implements NMSBridge {
         registerTraitWithCommand(manager, FoxTrait.class);
         registerTraitWithCommand(manager, FrogTrait.class);
         registerTraitWithCommand(manager, GoatTrait.class);
+        registerTraitWithCommand(manager, ItemDisplayTrait.class);
         registerTraitWithCommand(manager, LlamaTrait.class);
         registerTraitWithCommand(manager, MannequinTrait.class);
         registerTraitWithCommand(manager, MushroomCowTrait.class);
@@ -1405,7 +1416,26 @@ public class NMSImpl implements NMSBridge {
     public void replaceTrackerEntry(org.bukkit.entity.Entity entity) {
         Entity handle = getHandle(entity);
         ChunkMap cm = ((ServerLevel) handle.level()).getChunkSource().chunkMap;
-        TrackedEntity entry = cm.entityMap.get(entity.getEntityId());
+        TrackedEntity entry;
+        if (SpigotUtil.isFoliaServer()) {
+            try {
+                ServerLevel server = (ServerLevel) getHandle(entity).level();
+                entry = getTrackedEntityFolia(handle);
+                if (entry == null)
+                    return;
+                entry.broadcastRemoved();
+                CitizensEntityTracker newTracker = new CitizensEntityTracker(server.getChunkSource().chunkMap, entry);
+                try {
+                    ENTITY_TRACKER_SETTER_FOLIA.invoke(handle, newTracker);
+                } catch (Throwable t) {
+                    t.printStackTrace();
+                }
+            } catch (Exception exception) {
+                exception.printStackTrace();
+            }
+            return;
+        }
+        entry = cm.entityMap.get(entity.getEntityId());
         if (entry == null)
             return;
         entry.broadcastRemoved();
@@ -1605,6 +1635,12 @@ public class NMSImpl implements NMSBridge {
 
     @Override
     public void setLocationDirectly(org.bukkit.entity.Entity entity, Location location) {
+        if (SpigotUtil.isFoliaServer()
+                && (location.getWorld() != entity.getWorld() || !CitizensAPI.getScheduler().isOnOwnerThread(location)
+                        || !CitizensAPI.getScheduler().isOnOwnerThread(entity))) {
+            SpigotUtil.teleportAsync(entity, location);
+            return;
+        }
         getHandle(entity).snapTo(location.getX(), location.getY(), location.getZ(), location.getYaw(),
                 location.getPitch());
     }
@@ -1816,7 +1852,7 @@ public class NMSImpl implements NMSBridge {
             warden.setPose(Pose.EMERGING);
             warden.playSound(SoundEvents.WARDEN_EMERGE, 5.0F, 1.0F);
 
-            Bukkit.getScheduler().scheduleSyncDelayedTask(CitizensAPI.getPlugin(), () -> {
+            CitizensAPI.getScheduler().runEntityTaskLater(entity, () -> {
                 if (warden.hasPose(Pose.EMERGING)) {
                     warden.setPose(Pose.STANDING);
                 }
@@ -1828,7 +1864,7 @@ public class NMSImpl implements NMSBridge {
             warden.setPose(Pose.ROARING);
             warden.playSound(SoundEvents.WARDEN_ROAR, 3.0F, 1.0F);
 
-            Bukkit.getScheduler().scheduleSyncDelayedTask(CitizensAPI.getPlugin(), () -> {
+            CitizensAPI.getScheduler().runEntityTaskLater(entity, () -> {
                 if (warden.hasPose(Pose.ROARING)) {
                     warden.setPose(Pose.STANDING);
                 }
@@ -2294,8 +2330,12 @@ public class NMSImpl implements NMSBridge {
         }
         List<Packet<?>> toSend = Lists.newArrayList();
         if (position) {
-            TrackedEntity entry = ((ServerLevel) handle.level()).getChunkSource().chunkMap.entityMap
-                    .get(handle.getId());
+            TrackedEntity entry = null;
+            if (SpigotUtil.isFoliaServer()) {
+                entry = getTrackedEntityFolia(handle);
+            } else {
+                entry = ((ServerLevel) handle.level()).getChunkSource().chunkMap.entityMap.get(handle.getId());
+            }
             if (entry == null) {
                 Messaging.debug("Null tracker entity for ", from);
                 return Collections.emptyList();
@@ -2343,6 +2383,15 @@ public class NMSImpl implements NMSBridge {
             return snd;
         Reference<SoundEvent> ref = BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.tryParse(data)).orElse(null);
         return ref == null ? snd : ref.value();
+    }
+
+    private static TrackedEntity getTrackedEntityFolia(Entity entity) {
+        try {
+            return (TrackedEntity) ENTITY_TRACKER_GETTER_FOLIA.invoke(entity);
+        } catch (Throwable t) {
+            t.printStackTrace();
+            return null;
+        }
     }
 
     public static boolean isLeashed(NPC npc, Supplier<Boolean> isLeashed, Mob entity) {
@@ -2772,6 +2821,8 @@ public class NMSImpl implements NMSBridge {
     private static final MethodHandle ENTITY_NAVIGATION = NMS.getFirstSetter(Mob.class, PathNavigation.class);
     private static CustomEntityRegistry ENTITY_REGISTRY;
     private static MethodHandle ENTITY_REGISTRY_SETTER;
+    private static final MethodHandle ENTITY_TRACKER_GETTER_FOLIA = NMS.getGetter(Entity.class, "trackedEntity", false);
+    private static final MethodHandle ENTITY_TRACKER_SETTER_FOLIA = NMS.getSetter(Entity.class, "trackedEntity", false);
     private static final MethodHandle FALLING_BLOCK_STATE_SETTER = NMS.getFirstSetter(FallingBlockEntity.class,
             BlockState.class);
     private static final MethodHandle FISHING_HOOK_LIFE = NMS.getSetter(FishingHook.class, "i");
@@ -2810,7 +2861,7 @@ public class NMSImpl implements NMSBridge {
             VecDeltaCodec.class);
     private static final MethodHandle PUFFERFISH_DEFLATE = NMS.getSetter(Pufferfish.class, "ct");
     private static final MethodHandle PUFFERFISH_INFLATE = NMS.getSetter(Pufferfish.class, "f");
-    public static EntityDataAccessor<Integer> RABBIT_TYPE_DATAWATCHER = NMS.getFirstStaticObject(Rabbit.class,
+    public static final EntityDataAccessor<Integer> RABBIT_TYPE_DATAWATCHER = NMS.getFirstStaticObject(Rabbit.class,
             EntityDataAccessor.class);
     private static final Random RANDOM = Util.getFastRandom();
     private static final MethodHandle SERVER_ENTITY_GETTER = NMS.getFirstGetter(TrackedEntity.class,
@@ -2824,6 +2875,7 @@ public class NMSImpl implements NMSBridge {
     private static MethodHandle TEAM_FIELD;
     private static final Collection<MethodHandle> TRACKED_ENTITY_SETTERS = NMS.getSettersOfType(Entity.class,
             TrackedEntity.class);
+
     static {
         try {
             ENTITY_REGISTRY = new CustomEntityRegistry(BuiltInRegistries.ENTITY_TYPE);

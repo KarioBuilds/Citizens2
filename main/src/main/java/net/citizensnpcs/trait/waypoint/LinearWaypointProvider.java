@@ -1,8 +1,8 @@
 package net.citizensnpcs.trait.waypoint;
 
 import java.util.AbstractList;
-import java.util.Iterator;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
 
@@ -60,10 +60,6 @@ public class LinearWaypointProvider implements EnumerableWaypointProvider {
     private final List<Waypoint> waypoints = Lists.newArrayList();
 
     public LinearWaypointProvider() {
-    }
-
-    public LinearWaypointProvider(NPC npc) {
-        this.npc = npc;
     }
 
     public void addWaypoint(Waypoint waypoint) {
@@ -359,7 +355,7 @@ public class LinearWaypointProvider implements EnumerableWaypointProvider {
             String message = event.getMessage();
             if (message.equalsIgnoreCase("triggers")) {
                 event.setCancelled(true);
-                Bukkit.getScheduler().scheduleSyncDelayedTask(CitizensAPI.getPlugin(), () -> {
+                CitizensAPI.getScheduler().runEntityTask(event.getPlayer(), () -> {
                     conversation = TriggerEditPrompt.start(player, LinearWaypointEditor.this);
                     conversation.addConversationAbandonedListener(e -> {
                         setPaused(false);
@@ -369,21 +365,20 @@ public class LinearWaypointProvider implements EnumerableWaypointProvider {
                 });
             } else if (message.equalsIgnoreCase("clear")) {
                 event.setCancelled(true);
-                Bukkit.getScheduler().scheduleSyncDelayedTask(CitizensAPI.getPlugin(), this::clearWaypoints);
+                CitizensAPI.getScheduler().runEntityTask(event.getPlayer(), this::clearWaypoints);
             } else if (message.equalsIgnoreCase("toggle path") || message.equalsIgnoreCase("markers")) {
                 event.setCancelled(true);
-                Bukkit.getScheduler().scheduleSyncDelayedTask(CitizensAPI.getPlugin(), this::togglePath);
+                CitizensAPI.getScheduler().runEntityTask(event.getPlayer(), this::togglePath);
             } else if (message.equalsIgnoreCase("cycle")) {
                 event.setCancelled(true);
-                Bukkit.getScheduler().scheduleSyncDelayedTask(CitizensAPI.getPlugin(), () -> {
+                CitizensAPI.getScheduler().runEntityTask(event.getPlayer(), () -> {
                     cycle = !cycle;
                     Messaging.sendTr(event.getPlayer(), cycle ? Messages.LINEAR_WAYPOINT_EDITOR_CYCLE_SET
                             : Messages.LINEAR_WAYPOINT_EDITOR_CYCLE_UNSET);
                 });
             } else if (message.equalsIgnoreCase("here")) {
                 event.setCancelled(true);
-                Bukkit.getScheduler().scheduleSyncDelayedTask(CitizensAPI.getPlugin(),
-                        () -> addWaypoint(player.getLocation()));
+                CitizensAPI.getScheduler().runEntityTask(event.getPlayer(), () -> addWaypoint(player.getLocation()));
             }
         }
 
@@ -484,7 +479,7 @@ public class LinearWaypointProvider implements EnumerableWaypointProvider {
         private boolean ascending = true;
         private final Location cachedLocation = new Location(null, 0, 0, 0);
         private Waypoint currentDestination;
-        private Iterator<Waypoint> itr;
+        private ListIterator<Waypoint> itr;
         private boolean paused;
         private GoalSelector selector;
 
@@ -500,56 +495,67 @@ public class LinearWaypointProvider implements EnumerableWaypointProvider {
             return npc.getNavigator();
         }
 
-        private Iterator<Waypoint> getNewIterator() {
+        private ListIterator<Waypoint> getNewIterator() {
             LinearWaypointsCompleteEvent event = new LinearWaypointsCompleteEvent(LinearWaypointProvider.this,
                     getUnsafeIterator());
             Bukkit.getPluginManager().callEvent(event);
-            Iterator<Waypoint> next = event.getNextWaypoints();
-            return next;
+            return event.getNextWaypoints();
         }
 
-        private Iterator<Waypoint> getUnsafeIterator() {
+        private ListIterator<Waypoint> getUnsafeIterator() {
             if (cycle && ascending) {
                 ascending = false;
-                return new Iterator<Waypoint>() {
-                    int idx = waypoints.size() - 1;
-
-                    @Override
-                    public boolean hasNext() {
-                        return idx >= 0 && idx < waypoints.size();
-                    }
-
-                    @Override
-                    public Waypoint next() {
-                        return waypoints.get(idx--);
-                    }
-
-                    @Override
-                    public void remove() {
-                        waypoints.remove(Math.max(0, idx - 1));
-                    }
-                };
             } else {
                 ascending = true;
-                return new Iterator<Waypoint>() {
-                    int idx = 0;
-
-                    @Override
-                    public boolean hasNext() {
-                        return idx < waypoints.size();
-                    }
-
-                    @Override
-                    public Waypoint next() {
-                        return waypoints.get(idx++);
-                    }
-
-                    @Override
-                    public void remove() {
-                        waypoints.remove(Math.max(0, idx - 1));
-                    }
-                };
             }
+            return new ListIterator<Waypoint>() {
+                int idx = 0;
+
+                @Override
+                public void add(Waypoint e) {
+                    waypoints.add(e);
+                }
+
+                @Override
+                public boolean hasNext() {
+                    return ascending ? idx < waypoints.size() : idx > 0;
+                }
+
+                @Override
+                public boolean hasPrevious() {
+                    return ascending ? idx > 0 : idx < waypoints.size();
+                }
+
+                @Override
+                public Waypoint next() {
+                    return ascending ? waypoints.get(idx++) : waypoints.get(idx--);
+                }
+
+                @Override
+                public int nextIndex() {
+                    return ascending ? idx + 1 : idx - 1;
+                }
+
+                @Override
+                public Waypoint previous() {
+                    return ascending ? waypoints.get(--idx) : waypoints.get(++idx);
+                }
+
+                @Override
+                public int previousIndex() {
+                    return ascending ? idx - 1 : idx + 1;
+                }
+
+                @Override
+                public void remove() {
+                    waypoints.remove(Math.max(0, ascending ? idx - 1 : idx + 1));
+                }
+
+                @Override
+                public void set(Waypoint e) {
+                    waypoints.set(idx, e);
+                }
+            };
         }
 
         public boolean isPaused() {
@@ -588,6 +594,7 @@ public class LinearWaypointProvider implements EnumerableWaypointProvider {
                 if (npc != null && npc.getNavigator().isNavigating()) {
                     npc.getNavigator().cancelNavigation();
                 }
+                itr.previous();
             }
         }
 
@@ -625,17 +632,18 @@ public class LinearWaypointProvider implements EnumerableWaypointProvider {
             }
             double margin = getNavigator().getLocalParameters().distanceMargin();
             getNavigator().getLocalParameters().addSingleUseCallback(cancelReason -> {
-                if (npc.isSpawned() && currentDestination != null
-                        && npc.getStoredLocation().distance(currentDestination.getLocation()) <= margin + 1) {
-                    currentDestination.onReach(npc);
+                Waypoint waypoint = currentDestination;
+                selector.finish();
+                if (npc.isSpawned() && waypoint != null
+                        && npc.getStoredLocation().distance(waypoint.getLocation()) <= margin + 1) {
+                    waypoint.onReach(npc);
                     if (cachePaths && cancelReason == null) {
                         Iterable<Vector> path = getNavigator().getPathStrategy().getPath();
                         if (Iterables.size(path) > 0) {
-                            cachedPaths.put(new SourceDestinationPair(npcLoc, currentDestination), path);
+                            cachedPaths.put(new SourceDestinationPair(npcLoc, waypoint), path);
                         }
                     }
                 }
-                selector.finish();
             });
 
             return true;

@@ -1,45 +1,41 @@
 package net.citizensnpcs;
 
 import java.io.File;
+import java.io.IOException;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.MemoryConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
 import net.citizensnpcs.api.CitizensAPI;
-import net.citizensnpcs.api.util.DataKey;
-import net.citizensnpcs.api.util.MemoryDataKey;
 import net.citizensnpcs.api.util.Messaging;
 import net.citizensnpcs.api.util.SpigotUtil;
-import net.citizensnpcs.api.util.Storage;
-import net.citizensnpcs.api.util.YamlStorage;
 import net.citizensnpcs.util.NMS;
 import net.citizensnpcs.util.Util;
 
 public class Settings {
-    private final Storage config;
-    private final DataKey root;
+    private final YamlConfiguration config;
+    private final File file;
 
     public Settings(File folder) {
-        config = new YamlStorage(new File(folder, "config.yml"), "Citizens Configuration");
-        root = config.getKey("");
+        file = new File(folder, "config.yml");
+        config = YamlConfiguration.loadConfiguration(file);
+        config.options().header("Citizens Configuration");
 
-        config.load();
         for (Setting setting : Setting.values()) {
-            if (!root.keyExists(setting.path)) {
-                setting.setAtKey(root);
+            if (!config.contains(setting.path)) {
+                setting.setAtKey(config);
             } else {
-                setting.loadFromKey(root);
+                setting.loadFromKey(config);
             }
         }
         updateMessagingSettings();
@@ -47,10 +43,14 @@ public class Settings {
     }
 
     public void reload() {
-        config.load();
+        try {
+            config.load(file);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         for (Setting setting : Setting.values()) {
-            if (root.keyExists(setting.path)) {
-                setting.loadFromKey(root);
+            if (config.contains(setting.path)) {
+                setting.loadFromKey(config);
             }
         }
         updateMessagingSettings();
@@ -58,7 +58,11 @@ public class Settings {
     }
 
     public void save() {
-        config.save();
+        try {
+            config.save(file);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private void updateMessagingSettings() {
@@ -125,12 +129,22 @@ public class Settings {
         DEFAULT_DISTANCE_MARGIN(
                 "The default MOVEMENT distance in blocks where the NPC will move to before considering a path finished<br>Note: this is different from the PATHFINDING distance which is specified by path-distance-margin",
                 "npc.pathfinding.default-distance-margin", 1),
-        DEFAULT_HOLOGRAM_BACKGROUND_COLOR(
-                "The default background color for holograms, specified as an RGB or RGBA value<br>For example 0,255,123 would be green and 255,255,255,255 would be transparent",
-                "npc.hologram.default-background-color", ""),
         DEFAULT_HOLOGRAM_RENDERER(
                 "The default renderer for holograms, must be one of the following:<br>interaction - requires 1.19+, matches nametags more closely than display<br>display - allows for different colored backgrounds<br>display_vehicle - mounts the display on the NPC<br>areaeffectcloud - the safest option<br>armorstand - the second safest option, has a hitbox clientside<br>armorstand_vehicle - mounts the armorstand on the NPC, only useful for nameplates",
                 "npc.hologram.default-renderer", "display"),
+        DEFAULT_HOLOGRAM_RENDERER_SETTINGS("npc.hologram.default-renderer-settings",
+                ImmutableMap.of("seeThrough", true, "shadowed", true, "billboard", "CENTER", "interpolationDelay", 0)) {
+            @Override
+            public void loadFromKey(YamlConfiguration config) {
+                value = config.get(path);
+            }
+
+            @Override
+            protected void setAtKey(YamlConfiguration config) {
+                config.set(path, value);
+                setComments(config);
+            }
+        },
         DEFAULT_LOOK_CLOSE("Enable look close by default", "npc.default.look-close.enabled", false),
         DEFAULT_LOOK_CLOSE_RANGE("Default look close range in blocks", "npc.default.look-close.range", 10),
         DEFAULT_NPC_HOLOGRAM_LINE_HEIGHT("Default distance between hologram lines", "npc.hologram.default-line-height",
@@ -168,25 +182,15 @@ public class Settings {
         DEFAULT_TALK_CLOSE("npc.default.talk-close.enabled", false),
         DEFAULT_TALK_CLOSE_RANGE("Default talk close range in blocks", "npc.default.talk-close.range", 5),
         DEFAULT_TEXT("npc.default.talk-close.text", "Hi, I'm <npc>!") {
-            @SuppressWarnings("unchecked")
             @Override
-            public void loadFromKey(DataKey root) {
-                List<String> list = new ArrayList<>();
-                Object raw = root.getRaw(path);
-                if (raw instanceof ConfigurationSection || raw instanceof Map) {
-                    for (DataKey key : root.getRelative(path).getSubKeys()) {
-                        list.add(key.getString(""));
-                    }
-                } else if (raw instanceof Collection) {
-                    list.addAll((Collection<? extends String>) raw);
-                }
-                value = list;
+            public void loadFromKey(YamlConfiguration config) {
+                value = config.getStringList(path);
             }
 
             @Override
-            protected void setAtKey(DataKey root) {
-                root.setRaw(path, Lists.newArrayList(value));
-                setComments(root);
+            protected void setAtKey(YamlConfiguration config) {
+                config.set(path, Lists.newArrayList(value));
+                setComments(config);
             }
         },
         DEFAULT_TEXT_DELAY_MAX("Default maximum delay when talking to players",
@@ -272,7 +276,6 @@ public class Settings {
                 "npc.pathfinding.pathfinder-type", "MINECRAFT"),
         PLACEHOLDER_SKIN_UPDATE_FREQUENCY("How often to update skin placeholders",
                 "npc.skins.placeholder-update-frequency-ticks", "npc.skins.placeholder-update-frequency", "5m"),
-        PLAYER_TELEPORT_DELAY("npc.delay-player-teleport-ticks", "npc.delay-player-teleport", -1),
         REMOVE_PLAYERS_FROM_PLAYER_LIST("Whether to remove NPCs from the Java list of players",
                 "npc.player.remove-from-list", true),
         RESET_FORMATTING_ON_COLOR_CHANGE(
@@ -393,36 +396,34 @@ public class Settings {
             if (duration == null) {
                 duration = SpigotUtil.parseDuration(asString(), null);
             }
-            return Util.toTicks(duration);
+            return SpigotUtil.toTicks(duration);
         }
 
-        protected void loadFromKey(DataKey root) {
-            setComments(root);
-            if (migrateFrom != null && root.keyExists(migrateFrom) && !root.keyExists(path)) {
-                value = root.getRaw(migrateFrom);
-                root.removeKey(migrateFrom);
+        protected void loadFromKey(YamlConfiguration config) {
+            if (migrateFrom != null && config.contains(migrateFrom) && !config.contains(path)) {
+                value = config.get(migrateFrom);
+                config.set(migrateFrom, null);
             } else {
-                value = root.getRaw(path);
+                value = config.get(path);
             }
         }
 
-        protected void setAtKey(DataKey root) {
-            root.setRaw(path, value);
-            setComments(root);
+        protected void setAtKey(YamlConfiguration config) {
+            config.set(path, value);
+            setComments(config);
         }
 
-        protected void setComments(DataKey root) {
-            if (!SUPPORTS_SET_COMMENTS || !root.keyExists(path))
+        protected void setComments(YamlConfiguration config) {
+            if (!SUPPORTS_SET_COMMENTS || comments == null)
                 return;
-            ((MemoryDataKey) root).getSection("").setComments(path,
-                    comments == null ? null : Arrays.asList(comments.split("<br>")));
+            config.setComments(path, Arrays.asList(comments.split("<br>")));
         }
     }
 
     private static boolean SUPPORTS_SET_COMMENTS = true;
     static {
         try {
-            ConfigurationSection.class.getMethod("getInlineComments", String.class);
+            ConfigurationSection.class.getMethod("setComments", String.class, List.class);
         } catch (NoSuchMethodException | SecurityException e) {
             SUPPORTS_SET_COMMENTS = false;
         }

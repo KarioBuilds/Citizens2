@@ -132,7 +132,7 @@ class ProfileFetchThread implements Runnable {
                 javaNames.add(request.getPlayerName());
             }
         }
-        NMS.findProfilesByNames(javaNames.toArray(new String[javaNames.size()]), new ProfileLookupCallback() {
+        NMS.findProfilesByNames(javaNames.toArray(new String[0]), new ProfileLookupCallback() {
             @SuppressWarnings("unused")
             public void onProfileLookupFailed(GameProfile profile, Exception e) {
                 GameProfileWrapper gpw = GameProfileWrapper.fromMojangProfile(profile);
@@ -230,7 +230,7 @@ class ProfileFetchThread implements Runnable {
     }
 
     private static void addHandler(ProfileRequest request, Consumer<ProfileRequest> handler) {
-        Bukkit.getScheduler().scheduleSyncDelayedTask(CitizensAPI.getPlugin(), () -> request.addHandler(handler), 1);
+        CitizensAPI.getScheduler().runTaskLater(() -> request.addHandler(handler), 1);
     }
 
     @Nullable
@@ -264,6 +264,6 @@ class ProfileFetchThread implements Runnable {
     }
 
     private static void sendResult(Consumer<ProfileRequest> handler, ProfileRequest request) {
-        Bukkit.getScheduler().scheduleSyncDelayedTask(CitizensAPI.getPlugin(), () -> handler.accept(request), 1);
+        CitizensAPI.getScheduler().runTaskLater(() -> handler.accept(request), 1);
     }
 }

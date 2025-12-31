@@ -8,6 +8,7 @@ import java.util.function.Function;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.event.player.PlayerTeleportEvent.TeleportCause;
@@ -534,14 +535,22 @@ public class CitizensNavigator implements Navigator, Runnable {
 
         // switch ticket to the new chunk
         if (activeTicket != null) {
-            activeTicket.getChunk().removePluginChunkTicket(CitizensAPI.getPlugin());
+            final ChunkCoord tempTicket = activeTicket;
+            final World tempWorld = tempTicket.getWorld();
+            CitizensAPI.getScheduler().runRegionTask(tempWorld, tempTicket.x, tempTicket.z, () -> {
+                tempTicket.getChunk().removePluginChunkTicket(CitizensAPI.getPlugin());
+            });
         }
         if (target == null) {
             activeTicket = null;
             return;
         }
         activeTicket = coord;
-        activeTicket.getChunk().addPluginChunkTicket(CitizensAPI.getPlugin());
+        final ChunkCoord tempTicket = activeTicket;
+        final World tempTicketWorld = tempTicket.getWorld();
+        CitizensAPI.getScheduler().runRegionTask(tempTicketWorld, tempTicket.x, tempTicket.z, () -> {
+            tempTicket.getChunk().addPluginChunkTicket(CitizensAPI.getPlugin());
+        });
     }
 
     private static boolean SUPPORT_CHUNK_TICKETS = true;

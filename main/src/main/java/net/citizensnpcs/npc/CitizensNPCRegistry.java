@@ -26,9 +26,9 @@ import net.citizensnpcs.api.event.SpawnReason;
 import net.citizensnpcs.api.npc.NPC;
 import net.citizensnpcs.api.npc.NPCDataStore;
 import net.citizensnpcs.api.npc.NPCRegistry;
+import net.citizensnpcs.api.npc.RemoveReason;
 import net.citizensnpcs.api.trait.Trait;
 import net.citizensnpcs.api.trait.trait.MobType;
-import net.citizensnpcs.api.util.RemoveReason;
 import net.citizensnpcs.npc.ai.NPCHolder;
 import net.citizensnpcs.trait.ArmorStandTrait;
 import net.citizensnpcs.trait.LookClose;
@@ -37,7 +37,7 @@ public class CitizensNPCRegistry implements NPCRegistry {
     private final String name;
     private final Int2ObjectOpenHashMap<NPC> npcs = new Int2ObjectOpenHashMap<>();
     private final NPCDataStore saves;
-    private final Map<UUID, NPC> uniqueNPCs = Maps.newHashMap();
+    private final Map<UUID, NPC> uniqueNPCs = Maps.newConcurrentMap();
 
     public CitizensNPCRegistry(NPCDataStore store) {
         this(store, "");

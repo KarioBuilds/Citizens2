@@ -1,5 +1,7 @@
 package net.citizensnpcs.npc;
 
+import java.util.function.Consumer;
+
 import org.bukkit.Location;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
@@ -9,7 +11,6 @@ import org.bukkit.metadata.FixedMetadataValue;
 import net.citizensnpcs.api.CitizensAPI;
 import net.citizensnpcs.api.npc.NPC;
 import net.citizensnpcs.util.NMS;
-import net.citizensnpcs.util.Util;
 
 public abstract class AbstractEntityController implements EntityController {
     private Entity bukkitEntity;
@@ -23,6 +24,7 @@ public abstract class AbstractEntityController implements EntityController {
         if (npc != null) {
             bukkitEntity.setMetadata("NPC", new FixedMetadataValue(CitizensAPI.getPlugin(), true));
             bukkitEntity.setMetadata("NPC-ID", new FixedMetadataValue(CitizensAPI.getPlugin(), npc.getId()));
+            bukkitEntity.setMetadata("NPC-NAME", new FixedMetadataValue(CitizensAPI.getPlugin(), npc.getFullName()));
         }
     }
 
@@ -34,6 +36,7 @@ public abstract class AbstractEntityController implements EntityController {
             return;
         bukkitEntity.removeMetadata("NPC", CitizensAPI.getPlugin());
         bukkitEntity.removeMetadata("NPC-ID", CitizensAPI.getPlugin());
+        bukkitEntity.removeMetadata("NPC-NAME", CitizensAPI.getPlugin());
         bukkitEntity = null;
     }
 
@@ -54,11 +57,12 @@ public abstract class AbstractEntityController implements EntityController {
         }
         bukkitEntity.removeMetadata("NPC", CitizensAPI.getPlugin());
         bukkitEntity.removeMetadata("NPC-ID", CitizensAPI.getPlugin());
+        bukkitEntity.removeMetadata("NPC-NAME", CitizensAPI.getPlugin());
         bukkitEntity = null;
     }
 
     @Override
-    public boolean spawn(Location at) {
-        return !Util.isLoaded(at) ? false : NMS.addEntityToWorld(bukkitEntity, CreatureSpawnEvent.SpawnReason.CUSTOM);
+    public void spawn(Location at, Consumer<Boolean> isSpawned) {
+        NMS.addEntityToWorld(bukkitEntity, CreatureSpawnEvent.SpawnReason.CUSTOM, isSpawned);
     }
 }

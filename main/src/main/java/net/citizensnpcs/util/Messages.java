@@ -34,6 +34,7 @@ public class Messages {
     public static final String BEE_NO_NECTAR = "citizens.commands.npc.bee.no-nectar";
     public static final String BEE_NOT_STUNG = "citizens.commands.npc.bee.not-stung";
     public static final String BEE_STUNG = "citizens.commands.npc.bee.bee-stung";
+    public static final String BEHAVIOR_TREE_APPLIED = "citizens.commands.npc.behavior.tree-applied";
     public static final String BOAT_TYPE_SET = "citizens.commands.npc.boat.type-set";
     public static final String BOUNDING_BOX_SET = "citizens.commands.npc.hitbox.set";
     public static final String CAMEL_POSE_SET = "citizens.commands.npc.camel.pose-set";
@@ -89,12 +90,13 @@ public class Messages {
     public static final String COMMANDS_SEQUENTIAL_SET = "citizens.commands.npc.commands.sequential-set";
     public static final String COMMANDS_SEQUENTIAL_UNSET = "citizens.commands.npc.commands.sequential-unset";
     public static final String CONTRIBUTE_TO_TRANSLATION_PROMPT = "citizens.contribute-to-translations-prompt";
-    public static final Object CONTROLLABLE_CONTROLS_SET = "citizens.commands.npc.controllable.controls-set";
+    public static final String CONTROLLABLE_CONTROLS_SET = "citizens.commands.npc.controllable.controls-set";
     public static final String CONTROLLABLE_REMOVED = "citizens.commands.npc.controllable.removed";
     public static final String CONTROLLABLE_SET = "citizens.commands.npc.controllable.set";
     public static final String COPIER_EDITOR_BEGIN = "citizens.editors.copier.begin";
     public static final String COPIER_EDITOR_END = "citizens.editors.copier.end";
     public static final String COPPER_WEATHER_STATE_SET = "citizens.commands.npc.coppergolem.weather-state-set";
+    public static final String COPPER_WEATHER_TICK_SET = "citizens.commands.npc.coppergolem.weather-tick-set";
     public static final String COSMETIC_EQUIPMENT_SET = "citizens.commands.npc.setequipment.cosmetic-set";
     public static final String CURRENT_WAYPOINT_PROVIDER = "citizens.commands.waypoints.current-provider";
     public static final String DEFAULT_POSE_SET = "citizens.commands.npc.pose.default-pose-set";
@@ -170,9 +172,6 @@ public class Messages {
     public static final String HEADONLY_UNSET = "citizens.commands.npc.lookclose.headonly-unset";
     public static final String HOLOGRAM_BACKGROUND_COLOR_SET = "citizens.commands.npc.hologram.background-color-set";
     public static final String HOLOGRAM_CLEARED = "citizens.commands.npc.hologram.cleared";
-    public static final String HOLOGRAM_DEFAULT_BACKGROUND_COLOR_SET = "citizens.commands.npc.hologram.default-background-color-set";
-    public static final String HOLOGRAM_DEFAULT_SHADOW_SET = "citizens.commands.npc.hologram.default-shadow-set";
-    public static final String HOLOGRAM_DEFAULT_SHADOW_UNSET = "citizens.commands.npc.hologram.default-shadow-unset";
     public static final String HOLOGRAM_DESCRIBE_HEADER = "citizens.commands.npc.hologram.text-describe-header";
     public static final String HOLOGRAM_INVALID_LINE = "citizens.commands.npc.hologram.invalid-text-id";
     public static final String HOLOGRAM_LINE_ADD = "citizens.commands.npc.hologram.line-add";
@@ -181,8 +180,7 @@ public class Messages {
     public static final String HOLOGRAM_LINE_SET = "citizens.commands.npc.hologram.text-set";
     public static final String HOLOGRAM_MARGIN_MISSING = "citizens.commands.npc.hologram.margin-missing";
     public static final String HOLOGRAM_MARGIN_SET = "citizens.commands.npc.hologram.margin-set";
-    public static final String HOLOGRAM_SHADOW_SET = "citizens.commands.npc.hologram.shadow-set";
-    public static final String HOLOGRAM_SHADOW_UNSET = "citizens.commands.npc.hologram.shadow-unset";
+    public static final String HOLOGRAM_RENDERER_SELECTED = "citizens.commands.npc.hologram.renderer-selected";
     public static final String HOLOGRAM_TEXT_MISSING = "citizens.commands.npc.hologram.text-missing";
     public static final String HOLOGRAM_TEXT_REMOVED = "citizens.commands.npc.hologram.text-removed";
     public static final String HOLOGRAM_VIEW_RANGE_SET = "citizens.commands.npc.hologram.view-range-set";
@@ -203,6 +201,7 @@ public class Messages {
     public static final String INVALID_ANIMATION = "citizens.editors.waypoints.triggers.animation.invalid-animation";
     public static final String INVALID_AXOLOTL_VARIANT = "citizens.commands.npc.axolotl.invalid-variant";
     public static final String INVALID_BEE_ANGER = "citizens.commands.npc.bee.invalid-anger";
+    public static final String INVALID_BEHAVIOR_FILE = "citizens.commands.npc.behavior.invalid-file";
     public static final String INVALID_CAT_COLLAR_COLOR = "citizens.commands.npc.cat.invalid-collar-color";
     public static final String INVALID_CAT_TYPE = "citizens.commands.npc.cat.invalid-type";
     public static final String INVALID_COPPER_WEATHER_STATE = "citizens.commands.npc.coppergolem.invalid-weather-state";
@@ -339,6 +338,7 @@ public class Messages {
     public static final String PARROT_VARIANT_SET = "citizens.commands.npc.parrot.variant-set";
     public static final String PASSIVE_SET = "citizens.commands.npc.passive.set";
     public static final String PASSIVE_UNSET = "citizens.commands.npc.passive.unset";
+    public static final String PATHFINDING_OPTIONS_ATTACK_DELAY_TICKS_SET = "citizens.commands.npc.pathopt.attack-delay-set";
     public static final String PATHFINDING_OPTIONS_ATTACK_RANGE_SET = "citizens.commands.npc.pathopt.attack-range-set";
     public static final String PATHFINDING_OPTIONS_AVOID_WATER_SET = "citizens.commands.npc.pathopt.avoid-water-set";
     public static final String PATHFINDING_OPTIONS_AVOID_WATER_UNSET = "citizens.commands.npc.pathopt.avoid-water-unset";
@@ -501,8 +501,8 @@ public class Messages {
     public static final String WAYPOINT_EDITOR_SHOWING_MARKERS = "citizens.editors.waypoints.linear.showing-markers";
     public static final String WAYPOINT_PROVIDER_SET = "citizens.commands.waypoints.set-provider";
     public static final String WAYPOINT_REMOVED = "citizens.commands.waypoints.waypoint-removed";
-    public static final String WAYPOINT_TELEPORTING_DISABLED = "citizens.commands.waypoints.disableteleporting.disabled";
-    public static final String WAYPOINT_TELEPORTING_ENABLED = "citizens.commands.waypoints.disableteleporting.enabled";
+    public static final String WAYPOINT_TELEPORTING_DISABLED = "citizens.commands.npc.pathopt.teleporting-disabled";
+    public static final String WAYPOINT_TELEPORTING_ENABLED = "citizens.commands.npc.pathopt.teleporting-enabled";
     public static final String WAYPOINT_TRIGGER_ADD_PROMPT = "citizens.editors.waypoints.triggers.add.prompt";
     public static final String WAYPOINT_TRIGGER_ADDED_SUCCESSFULLY = "citizens.editors.waypoints.triggers.add.added";
     public static final String WAYPOINT_TRIGGER_ANIMATION_AT_SET = "citizens.editors.waypoints.triggers.animation.at-set";

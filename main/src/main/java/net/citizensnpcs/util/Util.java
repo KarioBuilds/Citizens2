@@ -81,22 +81,6 @@ public class Util {
         return event.isCancelled();
     }
 
-    public static <T> T callPossiblySync(Callable<T> callable, boolean sync) {
-        if (!sync) {
-            try {
-                return callable.call();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-        try {
-            return Bukkit.getScheduler().callSyncMethod(CitizensAPI.getPlugin(), callable).get();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
     public static Vector callPushEvent(NPC npc, double x, double y, double z) {
         boolean allowed = npc == null || !npc.isProtected()
                 || npc.data().has(NPC.Metadata.COLLIDABLE) && npc.data().<Boolean> get(NPC.Metadata.COLLIDABLE);
@@ -432,11 +416,6 @@ public class Util {
         throw new NumberFormatException();
     }
 
-    public static int parseTicks(String raw) {
-        Duration duration = SpigotUtil.parseDuration(raw, null);
-        return duration == null ? -1 : toTicks(duration);
-    }
-
     public static String possiblyConvertToBedrockName(String name) {
         return name.startsWith(BEDROCK_NAME_PREFIX) ? name : BEDROCK_NAME_PREFIX + name;
     }
@@ -474,7 +453,9 @@ public class Util {
                 + " clicker " + clicker);
 
         if (!player) {
-            Bukkit.getServer().dispatchCommand(Bukkit.getConsoleSender(), interpolatedCommand);
+            CitizensAPI.getScheduler().runTask(() -> {
+                Bukkit.getServer().dispatchCommand(Bukkit.getConsoleSender(), interpolatedCommand);
+            });
             return;
         }
         boolean wasOp = clicker.isOp();
@@ -626,11 +607,6 @@ public class Util {
                 new TalkableEntity(bystander).talkNear(context, text);
             }
         }
-    }
-
-    public static int toTicks(Duration delay) {
-        return (int) (TimeUnit.MILLISECONDS.convert(delay.getSeconds(), TimeUnit.SECONDS)
-                + TimeUnit.MILLISECONDS.convert(delay.getNano(), TimeUnit.NANOSECONDS)) / 50;
     }
 
     private static MethodHandle ATTRIBUTE_VALUEOF = NMS.getMethodHandle(Attribute.class, "valueOf", false,

@@ -1,6 +1,5 @@
 package net.citizensnpcs.trait;
 
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
@@ -10,9 +9,9 @@ import net.citizensnpcs.api.LocationLookup.PerPlayerMetadata;
 import net.citizensnpcs.api.event.DespawnReason;
 import net.citizensnpcs.api.event.SpawnReason;
 import net.citizensnpcs.api.npc.NPC;
+import net.citizensnpcs.api.npc.RemoveReason;
 import net.citizensnpcs.api.trait.Trait;
 import net.citizensnpcs.api.trait.TraitName;
-import net.citizensnpcs.api.util.RemoveReason;
 import net.citizensnpcs.npc.EntityController;
 import net.citizensnpcs.util.EntityPacketTracker;
 import net.citizensnpcs.util.NMS;
@@ -35,7 +34,7 @@ public class PacketNPC extends Trait {
     public void onRemove(RemoveReason reason) {
         if (reason == RemoveReason.REMOVAL) {
             npc.despawn(DespawnReason.PENDING_RESPAWN);
-            Bukkit.getScheduler().scheduleSyncDelayedTask(CitizensAPI.getPlugin(), () -> {
+            CitizensAPI.getScheduler().runRegionTask(npc.getStoredLocation(), () -> {
                 if (npc.getStoredLocation() != null) {
                     npc.spawn(npc.getStoredLocation(), SpawnReason.RESPAWN);
                 }
@@ -109,10 +108,10 @@ public class PacketNPC extends Trait {
         }
 
         @Override
-        public boolean spawn(Location at) {
+        public void spawn(Location at, java.util.function.Consumer<Boolean> callback) {
             NMS.setLocationDirectly(base.getBukkitEntity(), at);
             PlayerUpdateTask.register(getBukkitEntity());
-            return true;
+            callback.accept(true);
         }
     }
 }
