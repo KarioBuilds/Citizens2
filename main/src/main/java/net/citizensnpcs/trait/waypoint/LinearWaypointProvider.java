@@ -29,6 +29,8 @@ import net.citizensnpcs.api.CitizensAPI;
 import net.citizensnpcs.api.ai.Goal;
 import net.citizensnpcs.api.ai.GoalSelector;
 import net.citizensnpcs.api.ai.Navigator;
+import net.citizensnpcs.api.ai.NavigatorParameters;
+import net.citizensnpcs.api.ai.PathStrategy;
 import net.citizensnpcs.api.astar.pathfinder.MinecraftBlockExaminer;
 import net.citizensnpcs.api.command.CommandContext;
 import net.citizensnpcs.api.command.CommandMessages;
@@ -612,7 +614,7 @@ public class LinearWaypointProvider implements EnumerableWaypointProvider {
             Waypoint next = itr.next();
             Location npcLoc = npc.getEntity().getLocation(cachedLocation);
             if (npcLoc.getWorld() != next.getLocation().getWorld()
-                    || npcLoc.distance(next.getLocation()) <= npc.getNavigator().getLocalParameters().distanceMargin())
+                    || npc.getNavigator().getLocalParameters().withinMargin(npcLoc, next.getLocation()))
                 return false;
 
             currentDestination = next;
@@ -630,18 +632,17 @@ public class LinearWaypointProvider implements EnumerableWaypointProvider {
             if (!getNavigator().isNavigating()) {
                 getNavigator().setTarget(Util.getCenterLocation(currentDestination.getLocation().getBlock()));
             }
-            double margin = getNavigator().getLocalParameters().distanceMargin();
+            PathStrategy strategy = getNavigator().getPathStrategy();
             getNavigator().getLocalParameters().addSingleUseCallback(cancelReason -> {
                 Waypoint waypoint = currentDestination;
                 selector.finish();
-                if (npc.isSpawned() && waypoint != null
-                        && npc.getStoredLocation().distance(waypoint.getLocation()) <= margin + 1) {
-                    waypoint.onReach(npc);
-                    if (cachePaths && cancelReason == null) {
-                        Iterable<Vector> path = getNavigator().getPathStrategy().getPath();
-                        if (Iterables.size(path) > 0) {
-                            cachedPaths.put(new SourceDestinationPair(npcLoc, waypoint), path);
-                        }
+                if (cancelReason != null || waypoint == null)
+                    return;
+                waypoint.onReach(npc);
+                if (cachePaths && strategy != null) {
+                    Iterable<Vector> path = strategy.getPath();
+                    if (Iterables.size(path) > 0) {
+                        cachedPaths.put(new SourceDestinationPair(npcLoc, waypoint), path);
                     }
                 }
             });

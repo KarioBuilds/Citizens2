@@ -148,7 +148,7 @@ public class ShopTrait extends Trait {
         @Persist(reify = true)
         private final List<NPCShopPage> pages = Lists.newArrayList();
         @Persist(reify = true)
-        private NPCShopStorage storage;
+        private NPCShopStorage storage = new NPCShopStorage();
         @Persist
         private String title;
         @Persist
@@ -946,7 +946,7 @@ public class ShopTrait extends Trait {
         public NPCShopSettings(ShopTrait trait, NPCShop shop) {
             this.trait = trait;
             this.shop = shop;
-            this.storage = trait.storage != null ? trait.storage : shop.storage;
+            this.storage = trait != null && trait.storage != null ? trait.storage : shop.storage;
         }
 
         @Override

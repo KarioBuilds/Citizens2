@@ -2,7 +2,6 @@ package net.citizensnpcs.npc.skin;
 
 import java.util.Objects;
 
-import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
 import net.citizensnpcs.Settings.Setting;
