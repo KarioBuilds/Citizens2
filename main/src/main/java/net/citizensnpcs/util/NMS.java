@@ -5,6 +5,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -44,7 +45,6 @@ import org.slf4j.helpers.NOPLogger;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
-import com.google.common.collect.Lists;
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.GameProfileRepository;
 import com.mojang.authlib.ProfileLookupCallback;
@@ -52,7 +52,7 @@ import com.mojang.authlib.minecraft.client.MinecraftClient;
 
 import net.citizensnpcs.api.CitizensAPI;
 import net.citizensnpcs.api.ai.NavigatorParameters;
-import net.citizensnpcs.api.astar.pathfinder.SwimmingExaminer;
+import net.citizensnpcs.api.astar.pathfinder.MinecraftBlockExaminer;
 import net.citizensnpcs.api.command.CommandManager;
 import net.citizensnpcs.api.command.exception.CommandException;
 import net.citizensnpcs.api.event.NPCKnockbackEvent;
@@ -290,7 +290,7 @@ public class NMS {
     }
 
     private static List<Field> getFieldsMatchingType(Class<?> clazz, Class<?> type, boolean allowStatic) {
-        List<Field> found = Lists.newArrayList();
+        List<Field> found = new ArrayList<>();
         for (Field field : clazz.getDeclaredFields()) {
             if (allowStatic ^ Modifier.isStatic(field.getModifiers())) {
                 continue;
@@ -543,6 +543,10 @@ public class NMS {
             return npc.data().<Function<NPC, Float>> get(NPC.Metadata.JUMP_POWER_SUPPLIER).apply(npc);
 
         return original;
+    }
+
+    public static List<EntityMetadataValue> getMetadata(Entity entity) {
+        return BRIDGE.getMetadata(entity);
     }
 
     public static MethodHandle getMethodHandle(Class<?> clazz, String method, boolean log, Class<?>... params) {
@@ -1069,7 +1073,7 @@ public class NMS {
     }
 
     public static void trySwim(Entity entity) {
-        trySwim(entity, SwimmingExaminer.isWaterMob(entity) ? 0.02F : 0.04F);
+        trySwim(entity, MinecraftBlockExaminer.isWaterMob(entity) ? 0.02F : 0.04F);
     }
 
     public static void trySwim(Entity entity, float power) {

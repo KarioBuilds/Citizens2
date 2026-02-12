@@ -1,6 +1,8 @@
 package net.citizensnpcs.trait.waypoint;
 
 import java.util.AbstractList;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
@@ -21,16 +23,13 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.util.Vector;
 
 import com.google.common.collect.Iterables;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 
 import net.citizensnpcs.Settings.Setting;
 import net.citizensnpcs.api.CitizensAPI;
-import net.citizensnpcs.api.ai.Goal;
-import net.citizensnpcs.api.ai.GoalSelector;
 import net.citizensnpcs.api.ai.Navigator;
-import net.citizensnpcs.api.ai.NavigatorParameters;
 import net.citizensnpcs.api.ai.PathStrategy;
+import net.citizensnpcs.api.ai.tree.Behavior;
+import net.citizensnpcs.api.ai.tree.BehaviorStatus;
 import net.citizensnpcs.api.astar.pathfinder.MinecraftBlockExaminer;
 import net.citizensnpcs.api.command.CommandContext;
 import net.citizensnpcs.api.command.CommandMessages;
@@ -52,14 +51,14 @@ import net.citizensnpcs.util.Util;
  * An ordered list of {@link Waypoint}s to walk between.
  */
 public class LinearWaypointProvider implements EnumerableWaypointProvider {
-    private final Map<SourceDestinationPair, Iterable<Vector>> cachedPaths = Maps.newHashMap();
+    private final Map<SourceDestinationPair, Iterable<Vector>> cachedPaths = new HashMap<>();
     @Persist
     private boolean cachePaths = Setting.DEFAULT_CACHE_WAYPOINT_PATHS.asBoolean();
     private LinearWaypointGoal currentGoal;
     @Persist
     private boolean cycle = false;
     private NPC npc;
-    private final List<Waypoint> waypoints = Lists.newArrayList();
+    private final List<Waypoint> waypoints = new ArrayList<>();
 
     public LinearWaypointProvider() {
     }
@@ -149,7 +148,7 @@ public class LinearWaypointProvider implements EnumerableWaypointProvider {
         if (currentGoal == null)
             return;
         currentGoal.onProviderChanged();
-        npc.getDefaultGoalController().removeGoal(currentGoal);
+        npc.getDefaultBehaviorController().removeBehavior(currentGoal);
         currentGoal = null;
     }
 
@@ -158,7 +157,7 @@ public class LinearWaypointProvider implements EnumerableWaypointProvider {
         this.npc = npc;
         if (currentGoal == null) {
             currentGoal = new LinearWaypointGoal();
-            npc.getDefaultGoalController().addGoal(currentGoal, 1);
+            npc.getDefaultBehaviorController().addBehavior(currentGoal);
         }
     }
 
@@ -477,13 +476,12 @@ public class LinearWaypointProvider implements EnumerableWaypointProvider {
         }
     }
 
-    private class LinearWaypointGoal implements Goal {
+    private class LinearWaypointGoal implements Behavior {
         private boolean ascending = true;
         private final Location cachedLocation = new Location(null, 0, 0, 0);
         private Waypoint currentDestination;
         private ListIterator<Waypoint> itr;
         private boolean paused;
-        private GoalSelector selector;
 
         private void ensureItr() {
             if (itr == null) {
@@ -511,7 +509,7 @@ public class LinearWaypointProvider implements EnumerableWaypointProvider {
                 ascending = true;
             }
             return new ListIterator<Waypoint>() {
-                int idx = 0;
+                int idx = ascending ? 0 : waypoints.size() - 1;
 
                 @Override
                 public void add(Waypoint e) {
@@ -567,9 +565,6 @@ public class LinearWaypointProvider implements EnumerableWaypointProvider {
         public void onProviderChanged() {
             itr = getUnsafeIterator();
             if (currentDestination != null) {
-                if (selector != null) {
-                    selector.finish();
-                }
                 if (npc != null && npc.getNavigator().isNavigating()) {
                     npc.getNavigator().cancelNavigation();
                 }
@@ -579,20 +574,18 @@ public class LinearWaypointProvider implements EnumerableWaypointProvider {
         @Override
         public void reset() {
             currentDestination = null;
-            selector = null;
         }
 
         @Override
-        public void run(GoalSelector selector) {
-            if (!getNavigator().isNavigating()) {
-                selector.finish();
-            }
+        public BehaviorStatus run() {
+            if (paused || !getNavigator().isNavigating())
+                return BehaviorStatus.SUCCESS;
+            return BehaviorStatus.RUNNING;
         }
 
         public void setPaused(boolean pause) {
             paused = pause;
             if (pause && currentDestination != null) {
-                selector.finish();
                 if (npc != null && npc.getNavigator().isNavigating()) {
                     npc.getNavigator().cancelNavigation();
                 }
@@ -601,7 +594,7 @@ public class LinearWaypointProvider implements EnumerableWaypointProvider {
         }
 
         @Override
-        public boolean shouldExecute(GoalSelector selector) {
+        public boolean shouldExecute() {
             if (paused || currentDestination != null || !npc.isSpawned() || getNavigator().isNavigating())
                 return false;
 
@@ -610,7 +603,6 @@ public class LinearWaypointProvider implements EnumerableWaypointProvider {
             if (!shouldExecute)
                 return false;
 
-            this.selector = selector;
             Waypoint next = itr.next();
             Location npcLoc = npc.getEntity().getLocation(cachedLocation);
             if (npcLoc.getWorld() != next.getLocation().getWorld()
@@ -635,7 +627,6 @@ public class LinearWaypointProvider implements EnumerableWaypointProvider {
             PathStrategy strategy = getNavigator().getPathStrategy();
             getNavigator().getLocalParameters().addSingleUseCallback(cancelReason -> {
                 Waypoint waypoint = currentDestination;
-                selector.finish();
                 if (cancelReason != null || waypoint == null)
                     return;
                 waypoint.onReach(npc);

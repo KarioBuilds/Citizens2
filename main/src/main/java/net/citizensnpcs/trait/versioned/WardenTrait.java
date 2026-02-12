@@ -1,5 +1,6 @@
 package net.citizensnpcs.trait.versioned;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -9,8 +10,6 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Pose;
 import org.bukkit.entity.Warden;
-
-import com.google.common.collect.Maps;
 
 import net.citizensnpcs.api.command.Arg;
 import net.citizensnpcs.api.command.Command;
@@ -27,7 +26,7 @@ import net.citizensnpcs.util.NMS;
 
 @TraitName("wardentrait")
 public class WardenTrait extends Trait {
-    private final Map<UUID, Integer> anger = Maps.newHashMap();
+    private final Map<UUID, Integer> anger = new HashMap<>();
 
     public WardenTrait() {
         super("wardentrait");
@@ -39,8 +38,8 @@ public class WardenTrait extends Trait {
 
     @Override
     public void run() {
-        if (npc.isSpawned() && npc.getEntity() instanceof Warden) {
-            Warden warden = (Warden) npc.getEntity();
+        if (npc.isSpawned() && npc.getCosmeticEntity() instanceof Warden) {
+            Warden warden = (Warden) npc.getCosmeticEntity();
             for (Map.Entry<UUID, Integer> entry : anger.entrySet()) {
                 warden.setAnger(Bukkit.getEntity(entry.getKey()), entry.getValue());
             }
@@ -55,7 +54,7 @@ public class WardenTrait extends Trait {
             min = 1,
             max = 4,
             permission = "citizens.npc.warden")
-    @Requirements(selected = true, ownership = true, types = EntityType.WARDEN)
+    @Requirements(selected = true, ownership = true, cosmeticTypes = EntityType.WARDEN)
     public static void warden(CommandContext args, CommandSender sender, NPC npc,
             @Arg(value = 1, completions = { "anger", "dig", "emerge", "roar" }) String command, @Arg(2) String player,
             @Arg(3) Integer anger) throws CommandException {

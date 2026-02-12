@@ -1,7 +1,9 @@
 package net.citizensnpcs;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
@@ -24,8 +26,6 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import com.github.retrooper.packetevents.PacketEvents;
 import com.google.common.collect.Iterables;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import com.mojang.authlib.GameProfile;
 
 import ch.ethz.globis.phtree.PhTreeHelper;
@@ -39,7 +39,6 @@ import net.citizensnpcs.api.CitizensAPI;
 import net.citizensnpcs.api.CitizensPlugin;
 import net.citizensnpcs.api.LocationLookup;
 import net.citizensnpcs.api.NMSHelper;
-import net.citizensnpcs.api.ai.speech.SpeechContext;
 import net.citizensnpcs.api.ai.tree.BehaviorRegistry;
 import net.citizensnpcs.api.astar.pathfinder.AsyncChunkCache;
 import net.citizensnpcs.api.command.CommandManager;
@@ -85,11 +84,10 @@ import net.citizensnpcs.util.Messages;
 import net.citizensnpcs.util.NMS;
 import net.citizensnpcs.util.PlayerUpdateTask;
 import net.citizensnpcs.util.SkinProperty;
-import net.citizensnpcs.util.Util;
 import net.milkbowl.vault.economy.Economy;
 
 public class Citizens extends JavaPlugin implements CitizensPlugin {
-    private final List<NPCRegistry> anonymousRegistries = Lists.newArrayList();
+    private final List<NPCRegistry> anonymousRegistries = new ArrayList<>();
     private AsyncChunkCache asyncChunkCache;
     private BehaviorRegistry behaviorRegistry;
     private final CommandManager commands = new CommandManager();
@@ -155,7 +153,7 @@ public class Citizens extends JavaPlugin implements CitizensPlugin {
     private NPCDataStore saves;
     private NPCSelector selector;
     private StoredShops shops;
-    private final Map<String, NPCRegistry> storedRegistries = Maps.newHashMap();
+    private final Map<String, NPCRegistry> storedRegistries = new HashMap<>();
     private TemplateRegistry templateRegistry;
     private NPCRegistry temporaryRegistry;
 
@@ -163,14 +161,14 @@ public class Citizens extends JavaPlugin implements CitizensPlugin {
 
     @Override
     public NPCRegistry createAnonymousNPCRegistry(NPCDataStore store) {
-        CitizensNPCRegistry anon = new CitizensNPCRegistry(store, "anonymous-" + UUID.randomUUID().toString());
+        CitizensNPCRegistry anon = new CitizensNPCRegistry(store, this, "anonymous-" + UUID.randomUUID().toString());
         anonymousRegistries.add(anon);
         return anon;
     }
 
     @Override
     public NPCRegistry createNamedNPCRegistry(String name, NPCDataStore store) {
-        NPCRegistry created = new CitizensNPCRegistry(store, name);
+        NPCRegistry created = new CitizensNPCRegistry(store, this, name);
         storedRegistries.put(name, created);
         return created;
     }
@@ -441,12 +439,12 @@ public class Citizens extends JavaPlugin implements CitizensPlugin {
             Bukkit.getPluginManager().disablePlugin(this);
             return;
         }
-        npcRegistry = new CitizensNPCRegistry(saves, "citizens");
-        temporaryRegistry = new CitizensNPCRegistry(new MemoryNPCDataStore(), "citizens-temporary");
+        traitFactory = new CitizensTraitFactory(this);
+        npcRegistry = new CitizensNPCRegistry(saves, this, "citizens");
+        temporaryRegistry = new CitizensNPCRegistry(new MemoryNPCDataStore(), this, "citizens-temporary");
         locationLookup = new LocationLookup(npcRegistry);
         locationLookup.runTaskTimer(CitizensAPI.getPlugin(), 0, 5);
 
-        traitFactory = new CitizensTraitFactory(this);
         selector = new NPCSelector(this);
 
         saveResource("templates/citizens/templates.yml", true);
@@ -559,7 +557,7 @@ public class Citizens extends JavaPlugin implements CitizensPlugin {
             throw new IllegalArgumentException("must be non-null");
         despawnNPCs(true);
         saves = store;
-        npcRegistry = new CitizensNPCRegistry(saves, "citizens-global-" + UUID.randomUUID().toString());
+        npcRegistry = new CitizensNPCRegistry(saves, this, "citizens-global-" + UUID.randomUUID().toString());
         saves.loadInto(npcRegistry);
     }
 
@@ -611,7 +609,7 @@ public class Citizens extends JavaPlugin implements CitizensPlugin {
                                     .filter(t -> !t.getKey().getNamespace().equals("citizens")).count()));
             metrics.addCustomChart(new Metrics.SimplePie("locale", () -> Locale.getDefault().getLanguage()));
             metrics.addCustomChart(new Metrics.AdvancedPie("traits", () -> {
-                Map<String, Integer> res = Maps.newHashMap();
+                Map<String, Integer> res = new HashMap<>();
                 for (NPC npc : npcRegistry) {
                     for (Trait trait : npc.getTraits()) {
                         if (traitFactory.trackStats(trait)) {
@@ -644,13 +642,7 @@ public class Citizens extends JavaPlugin implements CitizensPlugin {
         saves.saveToDiskImmediate();
     }
 
-    @Override
-    public void talk(SpeechContext context) {
-        Util.talk(context);
-    }
-
     private class CitizensLoadTask implements Runnable {
-
         @Override
         public void run() {
             if (packetEventsEnabled) {

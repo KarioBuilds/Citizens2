@@ -2,12 +2,14 @@ package net.citizensnpcs.trait.text;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
+import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.conversations.Conversation;
 import org.bukkit.conversations.ConversationFactory;
@@ -15,11 +17,10 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 
-import com.google.common.collect.Maps;
-
 import net.citizensnpcs.Settings.Setting;
 import net.citizensnpcs.api.CitizensAPI;
 import net.citizensnpcs.api.ai.speech.SpeechContext;
+import net.citizensnpcs.api.ai.speech.event.NPCSpeechEvent;
 import net.citizensnpcs.api.event.NPCRightClickEvent;
 import net.citizensnpcs.api.persistence.Persist;
 import net.citizensnpcs.api.trait.Trait;
@@ -40,7 +41,7 @@ import net.citizensnpcs.util.Util;
  */
 @TraitName("text")
 public class Text extends Trait implements Runnable, Listener {
-    private final Map<UUID, Long> cooldowns = Maps.newHashMap();
+    private final Map<UUID, Long> cooldowns = new HashMap<>();
     private int currentIndex;
     @Persist
     private int delay = -1;
@@ -219,7 +220,10 @@ public class Text extends Trait implements Runnable, Listener {
             }
         }
         if (sendTextToChat) {
-            npc.getDefaultSpeechController().speak(new SpeechContext(text.get(index), player));
+            SpeechContext context = new SpeechContext(text.get(index), player);
+            context.setTalker(npc.getEntity());
+            NPCSpeechEvent event = new NPCSpeechEvent(context);
+            Bukkit.getServer().getPluginManager().callEvent(event);
         }
         return true;
     }

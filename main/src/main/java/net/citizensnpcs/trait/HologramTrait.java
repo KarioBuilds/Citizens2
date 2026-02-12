@@ -1,5 +1,6 @@
 package net.citizensnpcs.trait;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -74,7 +75,7 @@ public class HologramTrait extends Trait {
     private boolean lastNameplateVisible;
     @Persist
     private double lineHeight = -1;
-    private final List<HologramLine> lines = Lists.newArrayList();
+    private final List<HologramLine> lines = new ArrayList<>();
     private HologramLine nameLine;
     private final NPCRegistry registry = CitizensAPI.getTemporaryNPCRegistry();
     private int t;
@@ -147,11 +148,8 @@ public class HologramTrait extends Trait {
     }
 
     private HologramRenderer createNameRenderer() {
-        HologramRenderer renderer;
-        // String setting = SpigotUtil.getVersion()[1] <= 8 ? "armorstand" : "areaeffectcloud";
-        String setting = defaultRenderer instanceof TextDisplayRenderer ? "display"
-                : SpigotUtil.getVersion()[1] >= 20 ? "armorstand_vehicle" : "armorstand";
-        renderer = createRenderer(setting);
+        String setting = SpigotUtil.getVersion()[1] >= 20 ? "armorstand_vehicle" : "armorstand";
+        HologramRenderer renderer = createRenderer(setting);
         if (HologramRendererCreateEvent.handlers.getRegisteredListeners().length > 0) {
             HologramRendererCreateEvent event = new HologramRendererCreateEvent(npc, renderer, true);
             Bukkit.getPluginManager().callEvent(event);
@@ -161,12 +159,12 @@ public class HologramTrait extends Trait {
     }
 
     private HologramRenderer createRenderer(String setting) {
-        if (defaultRenderer != null)
-            return defaultRenderer.copy();
-
         if (!SUPPORTS_DISPLAY) {
             setting = SpigotUtil.getVersion()[1] <= 8 ? "armorstand" : "areaeffectcloud";
         }
+        if (defaultRenderer != null)
+            return defaultRenderer.copy();
+
         switch (setting) {
             case "areaeffectcloud":
                 return new AreaEffectCloudRenderer();

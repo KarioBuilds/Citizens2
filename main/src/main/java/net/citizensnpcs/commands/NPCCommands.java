@@ -71,6 +71,7 @@ import net.citizensnpcs.api.CitizensAPI;
 import net.citizensnpcs.api.ai.PathfinderType;
 import net.citizensnpcs.api.ai.TeleportStuckAction;
 import net.citizensnpcs.api.ai.speech.SpeechContext;
+import net.citizensnpcs.api.ai.speech.event.NPCSpeechEvent;
 import net.citizensnpcs.api.ai.tree.StatusMapper;
 import net.citizensnpcs.api.command.Arg;
 import net.citizensnpcs.api.command.Arg.CompletionsProvider.OptionalKeyedCompletions;
@@ -143,6 +144,7 @@ import net.citizensnpcs.trait.CommandTrait.NPCCommandBuilder;
 import net.citizensnpcs.trait.Controllable;
 import net.citizensnpcs.trait.Controllable.BuiltInControls;
 import net.citizensnpcs.trait.CurrentLocation;
+import net.citizensnpcs.trait.DisguiseTrait;
 import net.citizensnpcs.trait.DropsTrait;
 import net.citizensnpcs.trait.EnderCrystalTrait;
 import net.citizensnpcs.trait.EndermanTrait;
@@ -464,7 +466,7 @@ public class NPCCommands {
             min = 1,
             max = 1,
             permission = "citizens.npc.bat")
-    @Requirements(selected = true, ownership = true, types = EntityType.BAT)
+    @Requirements(selected = true, ownership = true, cosmeticTypes = EntityType.BAT)
     public void bat(CommandContext args, CommandSender sender, NPC npc, @Flag("awake") Boolean awake)
             throws CommandException {
         if (awake == null)
@@ -524,7 +526,7 @@ public class NPCCommands {
             });
         }
         BlockBreaker breaker = npc.getBlockBreaker(args.getSenderTargetBlockLocation().getBlock(), cfg);
-        npc.getDefaultGoalController().addBehavior(StatusMapper.singleUse(breaker), 1);
+        npc.getDefaultBehaviorController().addBehavior(StatusMapper.singleUse(breaker));
     }
 
     @Command(
@@ -605,7 +607,7 @@ public class NPCCommands {
             if (args.hasFlag('s') && hand != CommandTrait.Hand.BOTH) {
                 hand = hand == CommandTrait.Hand.LEFT ? CommandTrait.Hand.SHIFT_LEFT : CommandTrait.Hand.SHIFT_RIGHT;
             }
-            List<String> perms = Lists.newArrayList();
+            List<String> perms = new ArrayList<>();
             if (permissions != null) {
                 perms.addAll(Arrays.asList(permissions.split(",")));
             }
@@ -1071,13 +1073,31 @@ public class NPCCommands {
 
     @Command(
             aliases = { "npc" },
+            usage = "disguise --type [type]",
+            desc = "",
+            modifiers = { "disguise" },
+            min = 1,
+            max = 1,
+            permission = "citizens.npc.disguise")
+    public void disguise(CommandContext args, CommandSender sender, NPC npc, @Flag("type") EntityType type)
+            throws CommandException {
+        if (((Citizens) CitizensAPI.getPlugin()).getPacketEventsListener() == null)
+            throw new CommandException("PacketEvents must be enabled to use this feature");
+        DisguiseTrait trait = npc.getOrAddTrait(DisguiseTrait.class);
+        if (type != null) {
+            trait.disguiseAsType(type);
+            Messaging.sendTr(sender, Messages.DISGUISE_SET, type);
+        }
+    }
+
+    @Command(
+            aliases = { "npc" },
             usage = "drops",
             desc = "",
             modifiers = { "drops" },
             min = 1,
             max = 1,
             permission = "citizens.npc.drops")
-    @Requirements(ownership = true, selected = true)
     public void drops(CommandContext args, Player sender, NPC npc) throws CommandException {
         DropsTrait trait = npc.getOrAddTrait(DropsTrait.class);
         trait.displayEditor(sender);
@@ -1092,10 +1112,9 @@ public class NPCCommands {
             max = 1,
             flags = "b",
             permission = "citizens.npc.endercrystal")
-    @Requirements(ownership = true, selected = true)
     public void endercrystal(CommandContext args, CommandSender sender, NPC npc) throws CommandException {
-        if (!npc.getOrAddTrait(MobType.class).getType().name().equals("END_CRYSTAL")
-                && !npc.getOrAddTrait(MobType.class).getType().name().equals("ENDER_CRYSTAL"))
+        if (!npc.getCosmeticEntityType().name().equals("END_CRYSTAL")
+                && !npc.getCosmeticEntityType().name().equals("ENDER_CRYSTAL"))
             throw new CommandException();
         if (args.hasFlag('b')) {
             EnderCrystalTrait trait = npc.getOrAddTrait(EnderCrystalTrait.class);
@@ -1116,13 +1135,15 @@ public class NPCCommands {
             flags = "a",
             modifiers = { "enderman" },
             min = 1,
-            max = 2,
+            max = 1,
             permission = "citizens.npc.enderman")
+    @Requirements(selected = true, ownership = true, cosmeticTypes = EntityType.ENDERMAN)
     public void enderman(CommandContext args, CommandSender sender, NPC npc) throws CommandException {
         if (args.hasFlag('a')) {
             boolean angry = npc.getOrAddTrait(EndermanTrait.class).toggleAngry();
             Messaging.sendTr(sender, angry ? Messages.ENDERMAN_ANGRY_SET : Messages.ENDERMAN_ANGRY_UNSET,
                     npc.getName());
+            return;
         }
         throw new CommandUsageException();
     }
@@ -1501,7 +1522,6 @@ public class NPCCommands {
             max = 1,
             flags = "pth",
             permission = "citizens.npc.home")
-    @Requirements(ownership = true, selected = true)
     public void home(CommandContext args, CommandSender sender, NPC npc, @Flag("location") Location loc,
             @Flag("delay") Duration delay, @Flag("distance") Double distance) throws CommandException {
         HomeTrait trait = npc.getOrAddTrait(HomeTrait.class);
@@ -1549,7 +1569,7 @@ public class NPCCommands {
             permission = "citizens.npc.horse")
     public void horse(CommandContext args, CommandSender sender, NPC npc,
             @Flag({ "color", "colour" }) Horse.Color color, @Flag("style") Horse.Style style) throws CommandException {
-        EntityType type = npc.getOrAddTrait(MobType.class).getType();
+        EntityType type = npc.getCosmeticEntityType();
         if (!Util.isHorse(type))
             throw new CommandException(CommandMessages.REQUIREMENTS_INVALID_MOB_TYPE, Util.prettyEnum(type));
         HorseModifiers horse = npc.getOrAddTrait(HorseModifiers.class);
@@ -1654,10 +1674,9 @@ public class NPCCommands {
             max = 2,
             flags = "h",
             permission = "citizens.npc.item")
-
     public void item(CommandContext args, CommandSender sender, NPC npc, @Arg(1) ItemStack item)
             throws CommandException {
-        EntityType type = npc.getOrAddTrait(MobType.class).getType();
+        EntityType type = npc.getCosmeticEntityType();
         if (!type.name().equals("OMINOUS_ITEM_SPAWNER") && !type.name().contains("ITEM_FRAME")
                 && !type.name().contains("MINECART") && !type.name().contains("ITEM_DISPLAY")
                 && !type.name().contains("BLOCK_DISPLAY") && !type.name().equals("DROPPED_ITEM")
@@ -1685,7 +1704,7 @@ public class NPCCommands {
             max = 1,
             flags = "",
             permission = "citizens.npc.itemframe")
-    @Requirements(ownership = true, selected = true, types = EntityType.ITEM_FRAME)
+    @Requirements(ownership = true, selected = true, cosmeticTypes = EntityType.ITEM_FRAME)
     public void itemframe(CommandContext args, CommandSender sender, NPC npc, @Flag("visible") Boolean visible,
             @Flag("fixed") Boolean fixed, @Flag("rotation") Rotation rotation, @Flag("item") ItemStack item,
             @Flag("face") BlockFace face) throws CommandException {
@@ -2017,7 +2036,6 @@ public class NPCCommands {
             max = 1,
             flags = "",
             permission = "citizens.npc.minecart")
-
     public void minecart(CommandContext args, CommandSender sender, NPC npc, @Flag("item") String item)
             throws CommandException {
         if (!npc.getOrAddTrait(MobType.class).getType().name().contains("MINECRAFT"))
@@ -2221,7 +2239,7 @@ public class NPCCommands {
             requiresFlags = true,
             flags = "sn",
             permission = "citizens.npc.ocelot")
-    @Requirements(selected = true, ownership = true, types = { EntityType.OCELOT })
+    @Requirements(selected = true, ownership = true, cosmeticTypes = { EntityType.OCELOT })
     public void ocelot(CommandContext args, CommandSender sender, NPC npc, @Flag("type") Ocelot.Type type)
             throws CommandException {
         OcelotModifiers trait = npc.getOrAddTrait(OcelotModifiers.class);
@@ -2742,7 +2760,7 @@ public class NPCCommands {
             modifiers = { "rabbittype", "rbtype" },
             min = 2,
             permission = "citizens.npc.rabbittype")
-    @Requirements(selected = true, ownership = true, types = { EntityType.RABBIT })
+    @Requirements(selected = true, ownership = true, cosmeticTypes = { EntityType.RABBIT })
     public void rabbitType(CommandContext args, CommandSender sender, NPC npc, @Arg(1) Rabbit.Type type)
             throws CommandException {
         if (type == null)
@@ -3095,7 +3113,7 @@ public class NPCCommands {
             min = 1,
             max = 1,
             permission = "citizens.npc.sheep")
-    @Requirements(selected = true, ownership = true, types = { EntityType.SHEEP })
+    @Requirements(selected = true, ownership = true, cosmeticTypes = { EntityType.SHEEP })
     public void sheep(CommandContext args, CommandSender sender, NPC npc, @Flag("color") DyeColor color,
             @Flag("sheared") Boolean sheared) throws CommandException {
         SheepTrait trait = npc.getOrAddTrait(SheepTrait.class);
@@ -3140,6 +3158,10 @@ public class NPCCommands {
             shop = shops.getShop(args.getString(2));
             if (shop == null && action.equalsIgnoreCase("edit")) {
                 shop = shops.addNamedShop(args.getString(2));
+                if (!shop.canEdit(npc, sender)) {
+                    shops.deleteShop(shop);
+                    throw new NoPermissionsException();
+                }
             }
         }
         if (shop == null)
@@ -3175,13 +3197,46 @@ public class NPCCommands {
 
     @Command(
             aliases = { "npc" },
+            usage = "showshop (name)",
+            desc = "",
+            modifiers = { "showshop" },
+            min = 2,
+            max = 2,
+            permission = "citizens.npc.showshop")
+    @Requirements(selected = false, ownership = true)
+    public void showshop(CommandContext args, CommandSender sender, NPC npc, @Arg(1) String shopName,
+            @Flag("player") String flagPlayer) throws CommandException {
+        Player player = null;
+        if (flagPlayer != null) {
+            if (!sender.hasPermission("citizens.npc.showshop.to-others"))
+                throw new NoPermissionsException();
+            player = Bukkit.getPlayer(flagPlayer);
+        } else if (sender instanceof Player) {
+            player = (Player) sender;
+        }
+        if (player == null)
+            throw new CommandException(Messages.SHOP_PLAYER_NOT_FOUND);
+
+        if (shopName == null && npc == null)
+            throw new CommandException(Messages.SHOP_NOT_FOUND, "");
+
+        NPCShop shop = shopName == null && npc != null ? npc.getOrAddTrait(ShopTrait.class).getDefaultShop()
+                : shops.getShop(shopName);
+
+        if (shop == null)
+            throw new CommandException(Messages.SHOP_NOT_FOUND, shopName);
+
+        shop.display(player);
+    }
+
+    @Command(
+            aliases = { "npc" },
             usage = "sitting (--explicit [true|false]) (--at [at])",
             desc = "",
             modifiers = { "sitting" },
             min = 1,
             max = 2,
             permission = "citizens.npc.sitting")
-
     public void sitting(CommandContext args, CommandSender sender, NPC npc, @Flag("explicit") Boolean explicit,
             @Flag("at") Location at) {
         SitTrait trait = npc.getOrAddTrait(SitTrait.class);
@@ -3209,7 +3264,7 @@ public class NPCCommands {
             permission = "citizens.npc.skin")
     public void skin(CommandContext args, CommandSender sender, NPC npc, @Flag("url") String url,
             @Flag("file") String file) throws CommandException {
-        EntityType type = npc.getOrAddTrait(MobType.class).getType();
+        EntityType type = npc.getCosmeticEntityType();
         if (type != EntityType.PLAYER && !type.name().equals("MANNEQUIN"))
             throw new RequirementMissingException(
                     Messaging.tr(CommandMessages.REQUIREMENTS_INVALID_MOB_TYPE, Util.prettyEnum(type)));
@@ -3296,10 +3351,10 @@ public class NPCCommands {
             trait.setSkinPersistent(args.getString(1), args.getString(3), args.getString(2));
             Messaging.sendTr(sender, Messages.SKIN_SET, npc.getName(), args.getString(1));
             return;
-        } else if (args.hasFlag('s') && npc.getEntity() instanceof Player) {
+        } else if (args.hasFlag('s') && npc.getCosmeticEntity() instanceof Player) {
             ItemStack is = new ItemStack(Material.PLAYER_HEAD);
             SkullMeta sm = (SkullMeta) is.getItemMeta();
-            NMS.setProfile(sm, NMS.getProfile((Player) npc.getEntity()));
+            NMS.setProfile(sm, NMS.getProfile((Player) npc.getCosmeticEntity()));
             is.setItemMeta(sm);
             if (sender instanceof Player && ((Player) sender).getInventory().addItem(is).isEmpty()) {
             } else if (args.getSenderLocation() != null) {
@@ -3376,7 +3431,7 @@ public class NPCCommands {
             min = 1,
             max = 2,
             permission = "citizens.npc.slimesize")
-    @Requirements(selected = true, ownership = true, types = { EntityType.MAGMA_CUBE, EntityType.SLIME })
+    @Requirements(selected = true, ownership = true, cosmeticTypes = { EntityType.MAGMA_CUBE, EntityType.SLIME })
     public void slimeSize(CommandContext args, CommandSender sender, NPC npc) {
         SlimeSize trait = npc.getOrAddTrait(SlimeSize.class);
         if (args.argsLength() <= 1) {
@@ -3557,7 +3612,8 @@ public class NPCCommands {
                 }
             });
         }
-        npc.getDefaultSpeechController().speak(context);
+        NPCSpeechEvent event = new NPCSpeechEvent(context);
+        Bukkit.getServer().getPluginManager().callEvent(event);
     }
 
     @Command(
@@ -3938,10 +3994,10 @@ public class NPCCommands {
             desc = "",
             modifiers = { "wither" },
             min = 1,
-            requiresFlags = true,
             max = 1,
+            requiresFlags = true,
             permission = "citizens.npc.wither")
-    @Requirements(selected = true, ownership = true, types = { EntityType.WITHER })
+    @Requirements(selected = true, ownership = true, cosmeticTypes = { EntityType.WITHER })
     public void wither(CommandContext args, CommandSender sender, NPC npc, @Flag("invulnerable") Boolean invulnerable,
             @Flag("arrow-shield") Boolean arrows, @Flag("invulnerable-ticks") Integer invulnerableTicks)
             throws CommandException {
@@ -3967,7 +4023,7 @@ public class NPCCommands {
             requiresFlags = true,
             flags = "sati",
             permission = "citizens.npc.wolf")
-    @Requirements(selected = true, ownership = true, types = EntityType.WOLF)
+    @Requirements(selected = true, ownership = true, cosmeticTypes = EntityType.WOLF)
     public void wolf(CommandContext args, CommandSender sender, NPC npc, @Flag("collar") String collar,
             @Flag(
                     value = "variant",

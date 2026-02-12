@@ -11,9 +11,7 @@ import java.util.WeakHashMap;
 
 import javax.annotation.Nullable;
 
-import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
-import org.bukkit.scheduler.BukkitTask;
 
 import com.mojang.authlib.GameProfile;
 
@@ -23,6 +21,7 @@ import net.citizensnpcs.api.event.DespawnReason;
 import net.citizensnpcs.api.event.SpawnReason;
 import net.citizensnpcs.api.npc.NPC;
 import net.citizensnpcs.api.util.Messaging;
+import net.citizensnpcs.api.util.schedulers.SchedulerTask;
 import net.citizensnpcs.npc.skin.profile.ProfileFetcher;
 import net.citizensnpcs.trait.SkinTrait;
 import net.citizensnpcs.util.GameProfileWrapper;
@@ -37,7 +36,7 @@ public class Skin {
     private boolean hasFetched;
     private volatile boolean isValid = true;
     private final Map<SkinnableEntity, Void> pending = new WeakHashMap<>(15);
-    private net.citizensnpcs.api.util.schedulers.SchedulerTask retryTask;
+    private SchedulerTask retryTask;
     private volatile SkinProperty skinData;
     private volatile UUID skinId;
     private final String skinName;
@@ -158,8 +157,7 @@ public class Skin {
 
                     fetchRetries++;
                     long delay = Setting.NPC_SKIN_RETRY_DELAY.asTicks();
-                    retryTask = CitizensAPI.getScheduler().runTaskLater(this::fetch,
-                            delay);
+                    retryTask = CitizensAPI.getScheduler().runTaskLater(this::fetch, delay);
 
                     Messaging.idebug(() -> "Retrying skin fetch for '" + skinName + "' in " + delay + " ticks.");
                     break;
@@ -200,8 +198,7 @@ public class Skin {
                     }
                     fetchRetries++;
                     int delay = Setting.NPC_SKIN_RETRY_DELAY.asTicks();
-                    retryTask = CitizensAPI.getScheduler().runTaskLater(
-                            this::fetchForced, delay);
+                    retryTask = CitizensAPI.getScheduler().runTaskLater(this::fetchForced, delay);
 
                     Messaging.idebug(() -> "Retrying skin fetch for '" + skinName + "' in " + delay + " ticks.");
                     break;

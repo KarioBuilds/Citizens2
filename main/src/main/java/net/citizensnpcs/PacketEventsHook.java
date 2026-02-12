@@ -1,7 +1,10 @@
 package net.citizensnpcs;
 
 import java.lang.invoke.MethodHandle;
+import java.lang.reflect.Constructor;
+import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -23,9 +26,15 @@ import com.github.retrooper.packetevents.event.PacketListenerPriority;
 import com.github.retrooper.packetevents.event.PacketSendEvent;
 import com.github.retrooper.packetevents.manager.server.ServerVersion;
 import com.github.retrooper.packetevents.protocol.entity.data.EntityData;
+import com.github.retrooper.packetevents.protocol.entity.data.EntityDataTypes;
+import com.github.retrooper.packetevents.protocol.entity.type.EntityTypes;
 import com.github.retrooper.packetevents.protocol.packettype.PacketType;
 import com.github.retrooper.packetevents.protocol.packettype.PacketTypeCommon;
+import com.github.retrooper.packetevents.protocol.player.ClientVersion;
+import com.github.retrooper.packetevents.protocol.player.GameMode;
+import com.github.retrooper.packetevents.protocol.player.TextureProperty;
 import com.github.retrooper.packetevents.protocol.player.UserProfile;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerDestroyEntities;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityEquipment;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityHeadLook;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityMetadata;
@@ -33,13 +42,18 @@ import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEn
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityRotation;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityTeleport;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerPlayerInfo;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerPlayerInfo.Action;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerPlayerInfo.PlayerData;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerPlayerInfoUpdate;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerPlayerInfoUpdate.PlayerInfo;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSpawnEntity;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSpawnPlayer;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
 import io.github.retrooper.packetevents.util.SpigotConversionUtil;
+import net.citizensnpcs.Settings.Setting;
+import net.citizensnpcs.api.CitizensAPI;
 import net.citizensnpcs.api.event.NPCAddTraitEvent;
 import net.citizensnpcs.api.event.NPCDespawnEvent;
 import net.citizensnpcs.api.event.NPCEvent;
@@ -49,15 +63,23 @@ import net.citizensnpcs.api.trait.trait.Equipment;
 import net.citizensnpcs.api.trait.trait.Equipment.EquipmentSlot;
 import net.citizensnpcs.api.trait.trait.MobType;
 import net.citizensnpcs.api.util.Messaging;
+import net.citizensnpcs.trait.DisguiseTrait;
 import net.citizensnpcs.trait.HologramTrait.HologramRenderer;
 import net.citizensnpcs.trait.MirrorTrait;
 import net.citizensnpcs.trait.RotationTrait;
 import net.citizensnpcs.trait.RotationTrait.PacketRotationSession;
+import net.citizensnpcs.util.EntityMetadataValue;
 import net.citizensnpcs.util.NMS;
+import net.citizensnpcs.util.SkinProperty;
 import net.citizensnpcs.util.Util;
 
 public class PacketEventsHook implements Listener {
+    private MethodHandle DESERIALIZE_METHOD;
+    private final Map<Integer, DisguiseTrait> disguiseTraits = Maps.newConcurrentMap();
+    private final Map<UUID, DisguiseTrait> disguiseTraitsUUID = Maps.newConcurrentMap();
+    private Object MINIMESSAGE;
     private final Map<UUID, MirrorTrait> mirrorTraits = Maps.newConcurrentMap();
+    private Constructor<PlayerData> PLAYERDATA_CONSTRUCTOR;
     private final Map<Integer, RotationTrait> rotationTraits = Maps.newConcurrentMap();
 
     public PacketEventsHook(Citizens plugin) {
@@ -99,7 +121,7 @@ public class PacketEventsHook implements Listener {
                     return;
                 MirrorTrait mirror = npc.getTraitNullable(MirrorTrait.class);
                 if (mirror != null && mirror.getEquipmentFunction() != null && mirror.isMirroring(event.getPlayer())) {
-                    List<com.github.retrooper.packetevents.protocol.player.Equipment> equipment = Lists.newArrayList();
+                    List<com.github.retrooper.packetevents.protocol.player.Equipment> equipment = new ArrayList<>();
                     equipment.add(new com.github.retrooper.packetevents.protocol.player.Equipment(
                             com.github.retrooper.packetevents.protocol.player.EquipmentSlot.CHEST_PLATE,
                             SpigotConversionUtil.fromBukkitItemStack(
@@ -148,30 +170,135 @@ public class PacketEventsHook implements Listener {
             }
         }, PacketListenerPriority.NORMAL);
         PacketEvents.getAPI().getEventManager().registerListener(new PacketListener() {
-            private MethodHandle DESERIALIZE_METHOD;
-            private Object MINIMESSAGE;
-
-            private Object minimessage(String raw) {
-                if (MINIMESSAGE == null) {
-                    try {
-                        MINIMESSAGE = NMS.getMethodHandle(
-                                Class.forName("net{}kyori{}adventure.text.minimessage.MiniMessage".replace("{}", ".")),
-                                "miniMessage", true).invoke();
-                        DESERIALIZE_METHOD = NMS.getMethodHandle(MINIMESSAGE.getClass(), "deserialize", true,
-                                String.class);
-                    } catch (Throwable e) {
-                        e.printStackTrace();
-                    }
-                }
+            {
                 try {
-                    return DESERIALIZE_METHOD.invoke(MINIMESSAGE,
-                            Messaging.convertLegacyCodes(raw).replace("<csr>", ""));
+                    Class<?> component = Class.forName("net{}kyori{}adventure.text.Component".replace("{}", "."));
+                    PLAYERDATA_CONSTRUCTOR = PlayerData.class.getConstructor(component, UserProfile.class,
+                            GameMode.class, int.class);
+                } catch (Throwable t) {
+                    t.printStackTrace();
+                }
+            }
+
+            private List<EntityData<?>> getMetadata(ClientVersion version, Entity player) {
+                List<EntityMetadataValue> meta = NMS.getMetadata(player);
+                List<EntityData<?>> result = Lists.newArrayListWithExpectedSize(meta.size());
+                for (EntityMetadataValue emv : meta) {
+                    result.add(new EntityData(emv.id, EntityDataTypes.getById(version, emv.serializerId), emv.value));
+                }
+                return result;
+            }
+
+            private PlayerData getPlayerData(Player player, NPC npc) {
+                String fullName = npc.getFullName();
+                UserProfile profile = new UserProfile(player.getUniqueId(), fullName);
+                SkinProperty base = SkinProperty.fromMojangProfile(NMS.getProfile(player));
+                if (base != null) {
+                    profile.setTextureProperties(
+                            Lists.newArrayList(new TextureProperty(base.name, base.value, base.signature)));
+                }
+                PlayerData playerData = null;
+                try {
+                    playerData = PLAYERDATA_CONSTRUCTOR.newInstance(minimessage(npc.getFullName()), profile,
+                            GameMode.valueOf(player.getGameMode().name()), 10);
                 } catch (Throwable e) {
                     e.printStackTrace();
                 }
-                return null;
+                return playerData;
             }
 
+            private void handleDestroyEntities(PacketSendEvent event) {
+                WrapperPlayServerDestroyEntities packet = new WrapperPlayServerDestroyEntities(event);
+                for (int eid : packet.getEntityIds()) {
+                    DisguiseTrait trait = disguiseTraits.get(eid);
+                    if (trait == null || trait.getCosmeticEntity() == null)
+                        continue;
+                    if (trait.getCosmeticEntity() instanceof Player) {
+                        WrapperPlayServerPlayerInfo remove = new WrapperPlayServerPlayerInfo(Action.REMOVE_PLAYER,
+                                getPlayerData((Player) trait.getCosmeticEntity(), trait.getNPC()));
+                        event.getUser().sendPacket(remove);
+                    }
+                }
+            }
+
+            private void handleEntityMetadata(PacketSendEvent event) {
+                WrapperPlayServerEntityMetadata packet = new WrapperPlayServerEntityMetadata(event);
+
+                DisguiseTrait trait = disguiseTraits.get(packet.getEntityId());
+                if (trait == null || trait.getCosmeticEntity() == null)
+                    return;
+
+                packet.setEntityMetadata(getMetadata(event.getUser().getClientVersion(), trait.getCosmeticEntity()));
+                packet.write();
+            }
+
+            private void handleSpawnEntity(PacketSendEvent event) {
+                WrapperPlayServerSpawnEntity packet = new WrapperPlayServerSpawnEntity(event);
+
+                DisguiseTrait trait = disguiseTraits.get(packet.getEntityId());
+                if (trait == null || trait.getCosmeticEntity() == null)
+                    return;
+                if (trait.getCosmeticEntity() instanceof Player) {
+                    event.setCancelled(true);
+                    Player player = (Player) trait.getCosmeticEntity();
+                    PlayerData playerData = getPlayerData(player, trait.getNPC());
+                    event.getUser().sendPacket(new WrapperPlayServerPlayerInfo(Action.ADD_PLAYER, playerData));
+                    event.getUser()
+                            .sendPacket(new WrapperPlayServerSpawnPlayer(packet.getEntityId(), player.getUniqueId(),
+                                    new com.github.retrooper.packetevents.protocol.world.Location(packet.getPosition(),
+                                            packet.getHeadYaw(), packet.getPitch()),
+                                    version -> getMetadata(version, player)));
+
+                    WrapperPlayServerPlayerInfo remove = new WrapperPlayServerPlayerInfo(Action.REMOVE_PLAYER,
+                            playerData);
+                    CitizensAPI.getScheduler().runEntityTaskLater(event.getPlayer(),
+                            () -> event.getUser().sendPacket(remove), Setting.TABLIST_REMOVE_PACKET_DELAY.asTicks());
+                } else {
+                    packet.setEntityType(
+                            EntityTypes.getByName(trait.getCosmeticEntity().getType().getKey().toString()));
+                    packet.write();
+                }
+            }
+
+            private void handleSpawnPlayer(PacketSendEvent event) {
+                WrapperPlayServerSpawnPlayer packet = new WrapperPlayServerSpawnPlayer(event);
+                DisguiseTrait trait = disguiseTraits.get(packet.getEntityId());
+                if (trait == null || trait.getCosmeticEntity() instanceof Player)
+                    return;
+                event.setCancelled(true);
+                WrapperPlayServerSpawnEntity spawn = new WrapperPlayServerSpawnEntity(packet.getEntityId(),
+                        Optional.of(packet.getUUID()),
+                        EntityTypes.getByName(trait.getCosmeticEntity().getType().getKey().toString()),
+                        packet.getPosition(), packet.getPitch(), packet.getYaw(), packet.getYaw(), 0, Optional.empty());
+                event.getUser().sendPacket(spawn);
+            }
+
+            @Override
+            public void onPacketSend(PacketSendEvent event) {
+                if (event.getPacketType() == PacketType.Play.Server.SPAWN_ENTITY) {
+                    handleSpawnEntity(event);
+                } else if (event.getPacketType() == PacketType.Play.Server.SPAWN_PLAYER) {
+                    handleSpawnPlayer(event);
+                } else if (event.getPacketType() == PacketType.Play.Server.DESTROY_ENTITIES) {
+                    handleDestroyEntities(event);
+                } else if (event.getPacketType() == PacketType.Play.Server.PLAYER_INFO) {
+                    WrapperPlayServerPlayerInfo packet = new WrapperPlayServerPlayerInfo(event);
+                    for (Iterator<PlayerData> iterator = packet.getPlayerDataList().iterator(); iterator.hasNext();) {
+                        PlayerData pd = iterator.next();
+                        DisguiseTrait trait = disguiseTraitsUUID.get(pd.getUserProfile().getUUID());
+                        if (trait == null || trait.getCosmeticEntity() == null)
+                            return;
+                        if (!(trait.getCosmeticEntity() instanceof Player)) {
+                            iterator.remove();
+                        }
+                    }
+                    packet.write();
+                } else if (event.getPacketType() == PacketType.Play.Server.ENTITY_METADATA) {
+                    handleEntityMetadata(event);
+                }
+            }
+        }, PacketListenerPriority.NORMAL);
+        PacketEvents.getAPI().getEventManager().registerListener(new PacketListener() {
             @Override
             public void onPacketSend(PacketSendEvent event) {
                 if (event.getPacketType() != PacketType.Play.Server.ENTITY_METADATA)
@@ -327,6 +454,25 @@ public class PacketEventsHook implements Listener {
         }, PacketListenerPriority.HIGHEST);
     }
 
+    private Object minimessage(String raw) {
+        if (MINIMESSAGE == null) {
+            try {
+                MINIMESSAGE = NMS.getMethodHandle(
+                        Class.forName("net{}kyori{}adventure.text.minimessage.MiniMessage".replace("{}", ".")),
+                        "miniMessage", true).invoke();
+                DESERIALIZE_METHOD = NMS.getMethodHandle(MINIMESSAGE.getClass(), "deserialize", true, String.class);
+            } catch (Throwable e) {
+                e.printStackTrace();
+            }
+        }
+        try {
+            return DESERIALIZE_METHOD.invoke(MINIMESSAGE, Messaging.convertLegacyCodes(raw).replace("<csr>", ""));
+        } catch (Throwable e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
     @EventHandler(ignoreCancelled = true)
     public void onEntityDeath(EntityDeathEvent event) {
         rotationTraits.remove(event.getEntity().getEntityId());
@@ -338,6 +484,8 @@ public class PacketEventsHook implements Listener {
             return;
         rotationTraits.remove(event.getNPC().getEntity().getEntityId());
         mirrorTraits.remove(event.getNPC().getEntity().getUniqueId());
+        disguiseTraits.remove(event.getNPC().getEntity().getEntityId());
+        disguiseTraits.remove(event.getNPC().getEntity().getUniqueId());
     }
 
     @EventHandler(ignoreCancelled = true)
@@ -349,6 +497,12 @@ public class PacketEventsHook implements Listener {
         if (event.getNPC().hasTrait(RotationTrait.class)) {
             rotationTraits.put(event.getNPC().getEntity().getEntityId(),
                     event.getNPC().getTraitNullable(RotationTrait.class));
+        }
+        if (event.getNPC().hasTrait(DisguiseTrait.class)) {
+            disguiseTraits.put(event.getNPC().getEntity().getEntityId(),
+                    event.getNPC().getTraitNullable(DisguiseTrait.class));
+            disguiseTraitsUUID.put(event.getNPC().getEntity().getUniqueId(),
+                    event.getNPC().getTraitNullable(DisguiseTrait.class));
         }
         if (event.getNPC().hasTrait(MirrorTrait.class)
                 && event.getNPC().getOrAddTrait(MobType.class).getType() == EntityType.PLAYER) {

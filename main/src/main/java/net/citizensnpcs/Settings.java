@@ -106,6 +106,9 @@ public class Settings {
         CITIZENS_PATHFINDER_CHECK_BOUNDING_BOXES(
                 "Whether to check bounding boxes when pathfinding such as between fences, inside doors, or other half-blocks",
                 "npc.pathfinding.citizens.check-bounding-boxes", false),
+        CITIZENS_PATHFINDER_JUMPS(
+                "Whether to simulate jumping while pathfinding - increases pathfinding CPU cost.<br>Async pathfinder recommended. Still experimental.",
+                "npc.pathfinding.citizens.experimental-jumps", false),
         CITIZENS_PATHFINDER_MAXIMUM_ASTAR_ITERATIONS("The maximum number of blocks to check when pathfinding",
                 "npc.pathfinding.citizens.maximum-search-blocks", 1024),
         CITIZENS_PATHFINDER_OPENS_DOORS("Whether to open doors while pathfinding (should close them as well)",
@@ -132,8 +135,8 @@ public class Settings {
         DEFAULT_HOLOGRAM_RENDERER(
                 "The default renderer for holograms, must be one of the following:<br>interaction - requires 1.19+, matches nametags more closely than display<br>display - allows for different colored backgrounds<br>display_vehicle - mounts the display on the NPC<br>areaeffectcloud - the safest option<br>armorstand - the second safest option, has a hitbox clientside<br>armorstand_vehicle - mounts the armorstand on the NPC, only useful for nameplates",
                 "npc.hologram.default-renderer", "display"),
-        DEFAULT_HOLOGRAM_RENDERER_SETTINGS("npc.hologram.default-renderer-settings", ImmutableMap.of("seeThrough", true,
-                "shadowed", true, "billboard", "CENTER", "interpolationDelay", 0, "interpolationDuration", 0)) {
+        DEFAULT_HOLOGRAM_RENDERER_SETTINGS("npc.hologram.default-renderer-settings", ImmutableMap.of("seeThrough",
+                false, "shadowed", true, "billboard", "CENTER", "interpolationDelay", 0, "interpolationDuration", 0)) {
             @Override
             public void loadFromKey(YamlConfiguration config) {
                 value = config.get(path);
